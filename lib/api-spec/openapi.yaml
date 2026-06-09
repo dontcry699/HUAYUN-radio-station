@@ -1,15 +1,20 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Campus Radio Station Song Tracker API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: songs
+    description: Song library management
+  - name: submissions
+    description: Student song submissions
+  - name: stats
+    description: Station statistics
 paths:
   /healthz:
     get:
@@ -24,6 +29,259 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /songs:
+    get:
+      operationId: listSongs
+      tags: [songs]
+      summary: List all songs
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [played, unplayed, all]
+            default: all
+        - name: source
+          in: query
+          schema:
+            type: string
+            enum: [student, staff, all]
+            default: all
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of songs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Song"
+    post:
+      operationId: createSong
+      tags: [songs]
+      summary: Add a song to the library
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SongInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Song"
+
+  /songs/recent-plays:
+    get:
+      operationId: listRecentPlays
+      tags: [songs]
+      summary: Get recently played songs
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Recently played songs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Song"
+
+  /songs/{id}:
+    get:
+      operationId: getSong
+      tags: [songs]
+      summary: Get a song by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Song found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Song"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateSong
+      tags: [songs]
+      summary: Update a song
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SongUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Song"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteSong
+      tags: [songs]
+      summary: Delete a song
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /songs/{id}/play:
+    post:
+      operationId: markSongPlayed
+      tags: [songs]
+      summary: Mark a song as played
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayInput"
+      responses:
+        "200":
+          description: Marked as played
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Song"
+        "404":
+          description: Not found
+
+  /submissions:
+    get:
+      operationId: listSubmissions
+      tags: [submissions]
+      summary: List student song submissions
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected, all]
+            default: all
+      responses:
+        "200":
+          description: List of submissions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Submission"
+    post:
+      operationId: createSubmission
+      tags: [submissions]
+      summary: Submit a song request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmissionInput"
+      responses:
+        "201":
+          description: Submission received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Submission"
+
+  /submissions/{id}:
+    patch:
+      operationId: updateSubmission
+      tags: [submissions]
+      summary: Approve or reject a submission
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmissionUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Submission"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteSubmission
+      tags: [submissions]
+      summary: Delete a submission
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [stats]
+      summary: Get station statistics
+      responses:
+        "200":
+          description: Station stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StationStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +292,144 @@ components:
       required:
         - status
 
+    Song:
+      type: object
+      required: [id, title, artist, playedCount, isStudentSubmission, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        artist:
+          type: string
+        album:
+          type: ["string", "null"]
+        genre:
+          type: ["string", "null"]
+        playedCount:
+          type: integer
+        lastPlayedAt:
+          type: ["string", "null"]
+        lastPlayedBy:
+          type: ["string", "null"]
+        isStudentSubmission:
+          type: boolean
+        submittedBy:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    SongInput:
+      type: object
+      required: [title, artist]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        artist:
+          type: string
+          minLength: 1
+        album:
+          type: string
+        genre:
+          type: string
+        isStudentSubmission:
+          type: boolean
+        submittedBy:
+          type: string
+        notes:
+          type: string
+
+    SongUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        artist:
+          type: string
+          minLength: 1
+        album:
+          type: string
+        genre:
+          type: string
+        notes:
+          type: string
+
+    PlayInput:
+      type: object
+      properties:
+        djName:
+          type: string
+
+    Submission:
+      type: object
+      required: [id, title, artist, studentName, status, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        artist:
+          type: string
+        studentName:
+          type: string
+        studentEmail:
+          type: ["string", "null"]
+        message:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        reviewNote:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    SubmissionInput:
+      type: object
+      required: [title, artist, studentName]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        artist:
+          type: string
+          minLength: 1
+        studentName:
+          type: string
+          minLength: 1
+        studentEmail:
+          type: string
+        message:
+          type: string
+
+    SubmissionUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        reviewNote:
+          type: string
+
+    StationStats:
+      type: object
+      required: [totalSongs, playedSongs, unplayedSongs, totalPlays, pendingSubmissions, approvedSubmissions, rejectedSubmissions]
+      properties:
+        totalSongs:
+          type: integer
+        playedSongs:
+          type: integer
+        unplayedSongs:
+          type: integer
+        totalPlays:
+          type: integer
+        pendingSubmissions:
+          type: integer
+        approvedSubmissions:
+          type: integer
+        rejectedSubmissions:
+          type: integer
