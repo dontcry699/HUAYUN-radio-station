@@ -5,15 +5,13 @@
  * Campus Broadcasting Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { AnnouncementInputCategory } from './announcementInputCategory';
 
-export interface SongInput {
+export interface AnnouncementInput {
   /** @minLength 1 */
   title: string;
   /** @minLength 1 */
-  artist: string;
-  album?: string;
-  genre?: string;
-  isStudentSubmission?: boolean;
-  submittedBy?: string;
-  notes?: string;
+  content: string;
+  category?: AnnouncementInputCategory;
+  isActive?: boolean;
 }

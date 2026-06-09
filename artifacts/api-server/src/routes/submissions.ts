@@ -20,10 +20,9 @@ router.get("/submissions", async (req, res) => {
   }
 
   res.json(
-    submissions.map((s) => ({
-      ...s,
-      createdAt: s.createdAt.toISOString(),
-    }))
+    submissions
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .map((s) => ({ ...s, createdAt: s.createdAt.toISOString() }))
   );
 });
 
@@ -34,16 +33,18 @@ router.post("/submissions", async (req, res) => {
     .values({
       title: body.title,
       artist: body.artist,
-      studentName: body.studentName,
+      studentName: body.isAnonymous ? null : (body.studentName ?? null),
       studentEmail: body.studentEmail ?? null,
+      grade: body.grade ?? null,
+      className: body.className ?? null,
       message: body.message ?? null,
+      dedicationTo: body.dedicationTo ?? null,
+      dedicationMessage: body.dedicationMessage ?? null,
+      isAnonymous: body.isAnonymous ?? false,
       status: "pending",
     })
     .returning();
-  res.status(201).json({
-    ...submission,
-    createdAt: submission.createdAt.toISOString(),
-  });
+  res.status(201).json({ ...submission, createdAt: submission.createdAt.toISOString() });
 });
 
 router.patch("/submissions/:id", async (req, res) => {
@@ -61,10 +62,7 @@ router.patch("/submissions/:id", async (req, res) => {
     res.status(404).json({ error: "Submission not found" });
     return;
   }
-  res.json({
-    ...submission,
-    createdAt: submission.createdAt.toISOString(),
-  });
+  res.json({ ...submission, createdAt: submission.createdAt.toISOString() });
 });
 
 router.delete("/submissions/:id", async (req, res) => {

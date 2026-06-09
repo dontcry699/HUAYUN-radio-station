@@ -379,11 +379,11 @@ export default function Songs() {
           </DialogHeader>
           <form onSubmit={handlePlay} className="space-y-4">
             <div className="space-y-2">
-              <FormLabel>DJ Name (Optional)</FormLabel>
+              <label className="text-sm font-medium">Broadcast by (Optional)</label>
               <Input 
                 value={djName} 
                 onChange={(e) => setDjName(e.target.value)} 
-                placeholder="e.g. DJ Nightowl" 
+                placeholder="e.g. Radio Club Team" 
               />
             </div>
             <DialogFooter>

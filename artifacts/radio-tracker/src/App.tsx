@@ -7,6 +7,9 @@ import { Layout } from "@/components/layout";
 import Dashboard from "@/pages/dashboard";
 import Songs from "@/pages/songs";
 import Submissions from "@/pages/submissions";
+import Dedications from "@/pages/dedications";
+import Schedule from "@/pages/schedule";
+import Announcements from "@/pages/announcements";
 
 const queryClient = new QueryClient();
 
@@ -15,8 +18,11 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/" component={Dashboard} />
-        <Route path="/songs" component={Songs} />
+        <Route path="/library" component={Songs} />
         <Route path="/submissions" component={Submissions} />
+        <Route path="/dedications" component={Dedications} />
+        <Route path="/schedule" component={Schedule} />
+        <Route path="/announcements" component={Announcements} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

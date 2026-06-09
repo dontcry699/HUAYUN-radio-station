@@ -1,102 +1,114 @@
 import { Link, useLocation } from "wouter";
-import { Radio, Music, Inbox, Menu, Settings } from "lucide-react";
+import { RadioTower, Music, Inbox, Heart, Calendar, Megaphone, Menu, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useBroadcastStatus } from "@/hooks/use-broadcast-status";
+
+const navItems = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/library", label: "Library", icon: Music },
+  { href: "/submissions", label: "Submissions", icon: Inbox },
+  { href: "/dedications", label: "Dedications", icon: Heart },
+  { href: "/schedule", label: "Schedule", icon: Calendar },
+  { href: "/announcements", label: "Announcements", icon: Megaphone },
+];
+
+function SidebarContent({ location }: { location: string }) {
+  const { isLive, label, status } = useBroadcastStatus();
+
+  const statusColor = {
+    "school-not-started": "bg-gray-400",
+    "preparing": "bg-amber-400",
+    "live": "bg-green-500 live-dot",
+    "study-session": "bg-blue-400",
+    "ended": "bg-gray-400",
+  }[status];
+
+  const statusText = {
+    "school-not-started": "text-gray-500",
+    "preparing": "text-amber-600",
+    "live": "text-green-600 font-bold",
+    "study-session": "text-blue-600",
+    "ended": "text-gray-500",
+  }[status];
+
+  return (
+    <div className="flex flex-col h-full bg-sidebar">
+      <div className="p-5 border-b border-sidebar-border">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
+            <RadioTower className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <div className="font-bold text-base leading-tight text-sidebar-foreground">Campus Radio</div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Broadcasting Platform</div>
+          </div>
+        </div>
+      </div>
+
+      <nav className="flex-1 overflow-auto py-4">
+        <ul className="space-y-0.5 px-3">
+          {navItems.map((item) => {
+            const isActive = location === item.href;
+            return (
+              <li key={item.href}>
+                <Link href={item.href}>
+                  <div
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all cursor-pointer text-sm ${
+                      isActive
+                        ? "bg-primary text-white font-semibold shadow-sm"
+                        : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    {item.label}
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <div className="p-4 border-t border-sidebar-border">
+        <div className="flex items-center gap-2 px-2 py-2 rounded-lg bg-sidebar-accent/60">
+          <div className={`w-2 h-2 rounded-full shrink-0 ${statusColor}`} />
+          <span className={`text-xs leading-tight ${statusText}`}>{label}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-
-  const navItems = [
-    { href: "/", label: "Dashboard", icon: Radio },
-    { href: "/songs", label: "Library", icon: Music },
-    { href: "/submissions", label: "Submissions", icon: Inbox },
-  ];
+  const { isLive } = useBroadcastStatus();
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       <Sheet>
-        <div className="md:hidden flex items-center border-b px-4 py-3 bg-card sticky top-0 z-10">
+        <div className="md:hidden flex items-center border-b px-4 py-3 bg-sidebar sticky top-0 z-10">
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="mr-2">
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <div className="font-bold text-lg tracking-tight uppercase flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            WXYC 89.3
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
+              <RadioTower className="h-3.5 w-3.5 text-white" />
+            </div>
+            <span className="font-bold text-base text-sidebar-foreground">Campus Radio</span>
+            {isLive && <div className="w-2 h-2 rounded-full bg-green-500 live-dot" />}
           </div>
         </div>
-        <SheetContent side="left" className="w-[240px] sm:w-[300px] p-0 border-r-0">
-          <div className="flex flex-col h-full bg-sidebar">
-            <div className="p-6 border-b border-sidebar-border">
-              <div className="font-bold text-xl tracking-tighter uppercase flex items-center gap-2 text-sidebar-foreground">
-                <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(240,60,30,0.8)]" />
-                WXYC Tracker
-              </div>
-            </div>
-            <nav className="flex-1 overflow-auto py-4">
-              <ul className="space-y-1 px-3">
-                {navItems.map((item) => {
-                  const isActive = location === item.href;
-                  return (
-                    <li key={item.href}>
-                      <Link href={item.href}>
-                        <div
-                          className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors cursor-pointer ${
-                            isActive
-                              ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                              : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                          }`}
-                        >
-                          <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
-                          {item.label}
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </nav>
-            <div className="p-4 border-t border-sidebar-border">
-              <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground">
-                <Settings className="h-4 w-4" />
-                Settings
-              </Button>
-            </div>
-          </div>
+
+        <SheetContent side="left" className="w-[260px] sm:w-[300px] p-0 border-r-0">
+          <SidebarContent location={location} />
         </SheetContent>
       </Sheet>
 
-      <div className="hidden md:flex flex-col w-64 border-r bg-sidebar shrink-0 sticky top-0 h-screen">
-        <div className="p-6 border-b border-sidebar-border">
-          <div className="font-bold text-xl tracking-tighter uppercase flex items-center gap-2 text-sidebar-foreground">
-            <div className="w-2.5 h-2.5 rounded-full bg-primary animate-[pulse_2s_ease-in-out_infinite] shadow-[0_0_8px_rgba(240,60,30,0.8)]" />
-            WXYC Tracker
-          </div>
-        </div>
-        <nav className="flex-1 py-6">
-          <ul className="space-y-1 px-3">
-            {navItems.map((item) => {
-              const isActive = location === item.href;
-              return (
-                <li key={item.href}>
-                  <Link href={item.href}>
-                    <div
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors cursor-pointer ${
-                        isActive
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                          : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                      }`}
-                    >
-                      <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
-                      {item.label}
-                    </div>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+      <div className="hidden md:flex flex-col w-60 border-r bg-sidebar shrink-0 sticky top-0 h-screen">
+        <SidebarContent location={location} />
       </div>
 
       <main className="flex-1 w-full max-w-[100vw] overflow-x-hidden min-h-0 bg-background">
