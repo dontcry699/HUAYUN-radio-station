@@ -15,17 +15,43 @@ export interface BroadcastStatusInfo {
   remainingMinutes: number | null;
 }
 
-const SCHOOL_START = 17 * 60 + 30;
-const BROADCAST_START = 18 * 60 + 15;
-const BROADCAST_END = 18 * 60 + 35;
-const SCHOOL_END = 20 * 60 + 10;
+const DEFAULT_SCHEDULE = {
+  schoolStart: "17:30",
+  broadcastStart: "18:15",
+  broadcastEnd: "18:35",
+  schoolEnd: "20:10",
+};
+
+export type ScheduleConfig = typeof DEFAULT_SCHEDULE;
+
+export function loadScheduleConfig(): ScheduleConfig {
+  try {
+    const raw = localStorage.getItem("cr-schedule");
+    if (raw) return { ...DEFAULT_SCHEDULE, ...JSON.parse(raw) };
+  } catch { /* ignore */ }
+  return DEFAULT_SCHEDULE;
+}
+
+export function saveScheduleConfig(cfg: ScheduleConfig) {
+  localStorage.setItem("cr-schedule", JSON.stringify(cfg));
+}
+
+function parseTime(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
 
 export function toMinutes(date: Date) {
   return date.getHours() * 60 + date.getMinutes();
 }
 
-function compute(now: Date): BroadcastStatusInfo {
+function compute(now: Date, cfg: ScheduleConfig): BroadcastStatusInfo {
   const t = toMinutes(now);
+  const SCHOOL_START = parseTime(cfg.schoolStart);
+  const BROADCAST_START = parseTime(cfg.broadcastStart);
+  const BROADCAST_END = parseTime(cfg.broadcastEnd);
+  const SCHOOL_END = parseTime(cfg.schoolEnd);
+
   let status: BroadcastStatus;
   let label: string;
   let sublabel: string;
@@ -33,18 +59,18 @@ function compute(now: Date): BroadcastStatusInfo {
   if (t < SCHOOL_START) {
     status = "school-not-started";
     label = "广播未开始";
-    sublabel = "下一次广播时间：18:15";
+    sublabel = `下一次广播时间：${cfg.broadcastStart}`;
   } else if (t < BROADCAST_START) {
     status = "preparing";
     label = "广播准备中";
-    sublabel = "下一次广播时间：18:15";
+    sublabel = `下一次广播时间：${cfg.broadcastStart}`;
   } else if (t < BROADCAST_END) {
     status = "live";
     label = "音乐广播进行中";
     sublabel = "正在播放歌曲";
   } else if (t < SCHOOL_END) {
     status = "study-session";
-    label = "晚自习进行中";
+    label = "课程进行中";
     sublabel = "音乐广播已结束";
   } else {
     status = "ended";
@@ -57,18 +83,33 @@ function compute(now: Date): BroadcastStatusInfo {
 }
 
 export function useBroadcastStatus() {
-  const [info, setInfo] = useState(() => compute(new Date()));
+  const [cfg, setCfg] = useState<ScheduleConfig>(loadScheduleConfig);
+  const [info, setInfo] = useState(() => compute(new Date(), loadScheduleConfig()));
+
   useEffect(() => {
-    const iv = setInterval(() => setInfo(compute(new Date())), 30000);
-    return () => clearInterval(iv);
+    const update = () => {
+      const c = loadScheduleConfig();
+      setCfg(c);
+      setInfo(compute(new Date(), c));
+    };
+    update();
+    const iv = setInterval(update, 30000);
+    const onStorage = (e: StorageEvent) => { if (e.key === "cr-schedule") update(); };
+    window.addEventListener("storage", onStorage);
+    return () => { clearInterval(iv); window.removeEventListener("storage", onStorage); };
   }, []);
-  return info;
+
+  return { ...info, cfg };
 }
 
-export const SCHEDULE_ITEMS = [
-  { time: "17:30", minutes: SCHOOL_START, label: "晚自习开始", description: "同学们进入教室开始晚自习" },
-  { time: "18:00", minutes: 18 * 60, label: "广播前准备", description: "广播站成员准备今晚的歌曲单" },
-  { time: "18:15", minutes: BROADCAST_START, label: "音乐广播开始", description: "校园之声正式开播，播放同学点歌与寄语" },
-  { time: "18:35", minutes: BROADCAST_END, label: "音乐广播结束", description: "晚自习安静学习时段" },
-  { time: "20:10", minutes: SCHOOL_END, label: "放学", description: "同学们有序放学离校" },
-] as const;
+export function getScheduleItems(cfg: ScheduleConfig) {
+  return [
+    { time: cfg.schoolStart, label: "上课时间开始", description: "同学们进入教室，课程正式开始" },
+    { time: "18:00", label: "广播前准备", description: "广播站成员整理点歌单，调试设备" },
+    { time: cfg.broadcastStart, label: "音乐广播开始", description: "校园之声正式开播，播放点歌与寄语" },
+    { time: cfg.broadcastEnd, label: "音乐广播结束", description: "继续安静学习时段" },
+    { time: cfg.schoolEnd, label: "放学", description: "课程结束，同学们有序离校" },
+  ] as const;
+}
+
+export const SCHEDULE_ITEMS = getScheduleItems(DEFAULT_SCHEDULE);

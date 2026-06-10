@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, submissionsTable } from "@workspace/db";
+import { db, submissionsTable, songsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
   ListSubmissionsQueryParams,
@@ -50,6 +50,7 @@ router.post("/submissions", async (req, res) => {
 router.patch("/submissions/:id", async (req, res) => {
   const { id } = UpdateSubmissionParams.parse({ id: Number(req.params.id) });
   const body = UpdateSubmissionBody.parse(req.body);
+
   const [submission] = await db
     .update(submissionsTable)
     .set({
@@ -58,10 +59,31 @@ router.patch("/submissions/:id", async (req, res) => {
     })
     .where(eq(submissionsTable.id, id))
     .returning();
+
   if (!submission) {
     res.status(404).json({ error: "Submission not found" });
     return;
   }
+
+  // P1 FIX: Auto-add to library when approved
+  if (body.status === "approved") {
+    const existing = await db.select().from(songsTable);
+    const alreadyInLibrary = existing.some(
+      (s) =>
+        s.title.toLowerCase() === submission.title.toLowerCase() &&
+        s.artist.toLowerCase() === submission.artist.toLowerCase()
+    );
+    if (!alreadyInLibrary) {
+      await db.insert(songsTable).values({
+        title: submission.title,
+        artist: submission.artist,
+        isStudentSubmission: true,
+        submittedBy: submission.studentName ?? (submission.isAnonymous ? "匿名" : null),
+        grade: submission.grade ? `${submission.grade}${submission.className ? `（${submission.className}班）` : ""}` : null,
+      });
+    }
+  }
+
   res.json({ ...submission, createdAt: submission.createdAt.toISOString() });
 });
 

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, songsTable } from "@workspace/db";
-import { eq, ilike, or, sql } from "drizzle-orm";
+import { eq, ilike, or, sql, desc, and } from "drizzle-orm";
 import {
   ListSongsQueryParams,
   CreateSongBody,
@@ -18,42 +18,35 @@ const router = Router();
 router.get("/songs", async (req, res) => {
   const query = ListSongsQueryParams.parse(req.query);
 
-  let conditions: ReturnType<typeof eq>[] = [];
-
-  const searchCondition = query.search
-    ? or(
-        ilike(songsTable.title, `%${query.search}%`),
-        ilike(songsTable.artist, `%${query.search}%`)
-      )
-    : undefined;
-
-  let songs = await db.select().from(songsTable);
-
-  let filtered = songs;
+  let songs = await db
+    .select()
+    .from(songsTable)
+    .orderBy(desc(songsTable.playedCount), desc(songsTable.createdAt));
 
   if (query.status === "played") {
-    filtered = filtered.filter((s) => s.playedCount > 0);
+    songs = songs.filter((s) => s.playedCount > 0);
   } else if (query.status === "unplayed") {
-    filtered = filtered.filter((s) => s.playedCount === 0);
+    songs = songs.filter((s) => s.playedCount === 0);
   }
 
   if (query.source === "student") {
-    filtered = filtered.filter((s) => s.isStudentSubmission);
+    songs = songs.filter((s) => s.isStudentSubmission);
   } else if (query.source === "staff") {
-    filtered = filtered.filter((s) => !s.isStudentSubmission);
+    songs = songs.filter((s) => !s.isStudentSubmission);
   }
 
   if (query.search) {
     const q = query.search.toLowerCase();
-    filtered = filtered.filter(
+    songs = songs.filter(
       (s) =>
         s.title.toLowerCase().includes(q) ||
-        s.artist.toLowerCase().includes(q)
+        s.artist.toLowerCase().includes(q) ||
+        (s.album ?? "").toLowerCase().includes(q)
     );
   }
 
   res.json(
-    filtered.map((s) => ({
+    songs.map((s) => ({
       ...s,
       lastPlayedAt: s.lastPlayedAt ? s.lastPlayedAt.toISOString() : null,
       createdAt: s.createdAt.toISOString(),
@@ -85,14 +78,14 @@ router.post("/songs", async (req, res) => {
 router.get("/songs/recent-plays", async (req, res) => {
   const query = ListRecentPlaysQueryParams.parse(req.query);
   const limit = query.limit ?? 10;
-  const songs = await db.select().from(songsTable);
+  const songs = await db
+    .select()
+    .from(songsTable)
+    .orderBy(desc(songsTable.lastPlayedAt))
+    .limit(limit * 3);
+
   const played = songs
     .filter((s) => s.playedCount > 0 && s.lastPlayedAt)
-    .sort((a, b) => {
-      const aTime = a.lastPlayedAt?.getTime() ?? 0;
-      const bTime = b.lastPlayedAt?.getTime() ?? 0;
-      return bTime - aTime;
-    })
     .slice(0, limit);
 
   res.json(

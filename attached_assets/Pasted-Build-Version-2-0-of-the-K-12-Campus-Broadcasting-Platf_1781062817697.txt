@@ -1,0 +1,172 @@
+Build Version 2.0 of the K-12 Campus Broadcasting Platform.
+
+PRIORITY 1 - BUG FIXES
+
+1. Fix approved song workflow:
+- When a submission is approved it must automatically be inserted into the song library.
+- Refresh library data immediately.
+
+2. Fix song library sorting:
+- Default sorting must use play_count DESC.
+- Most played songs appear first.
+
+3. Fix category filtering:
+- Genre filter must work.
+- Source filter must work.
+- Filters must combine with search.
+
+4. Fix dashboard statistics consistency.
+
+=================================================
+
+PRIORITY 2 - ROLE BASED ACCESS CONTROL
+
+Create three user roles:
+
+Student
+Broadcaster
+Administrator
+
+Student permissions:
+- Submit songs
+- Submit dedications
+- View charts
+- View schedule
+- View announcements
+
+Broadcaster permissions:
+- Manage library
+- Approve requests
+- Manage playlists
+- View analytics
+
+Administrator permissions:
+- Full access
+- User management
+- System settings
+- Schedule configuration
+
+Create separate dashboards for each role.
+
+=================================================
+
+PRIORITY 3 - EDITABLE SCHOOL SCHEDULE
+
+Replace hardcoded times with configurable settings.
+
+Create schedule configuration:
+
+Class Start Time
+Broadcast Start Time
+Broadcast End Time
+School End Time
+
+All dashboard status logic must use configured values.
+
+=================================================
+
+PRIORITY 4 - THAI CHINESE SCHOOL LOCALIZATION
+
+Remove all references to evening self-study.
+
+Replace:
+
+晚自习开始
+
+with
+
+上课时间开始
+
+Replace:
+
+晚自习进行中
+
+with
+
+课程进行中
+
+=================================================
+
+PRIORITY 5 - USER MANAGEMENT
+
+Create User Management page.
+
+Fields:
+
+Name
+Username
+Role
+Grade
+Class
+Status
+
+Support:
+Create User
+Edit User
+Disable User
+Reset Password
+
+=================================================
+
+PRIORITY 6 - CLASS MANAGEMENT
+
+Create Grade and Class Management.
+
+Primary School
+Junior High School
+Senior High School
+
+Support custom classes.
+
+=================================================
+
+PRIORITY 7 - PLAYLIST SYSTEM
+
+Create daily playlist management.
+
+Broadcasters can arrange songs for the broadcast period.
+
+Support:
+Drag and drop ordering
+Auto play queue
+Estimated total duration
+
+=================================================
+
+PRIORITY 8 - PLAY HISTORY
+
+Track every broadcast.
+
+Store:
+
+Song
+Broadcaster
+Date
+Time
+Play Count
+
+=================================================
+
+PRIORITY 9 - EVENT MODE
+
+Support:
+
+Sports Day
+School Anniversary
+Graduation Ceremony
+Teachers Day
+
+Homepage automatically changes theme and banner.
+
+=================================================
+
+PRIORITY 10 - PREPARE FOR V3
+
+Design database structure for:
+
+LINE integration
+QR code song submission
+Public display screen mode
+Notification system
+
+Maintain mobile responsiveness and modern Chinese campus broadcasting design.
