@@ -4,63 +4,62 @@ import { formatDistanceToNow } from "date-fns";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { 
-  useListSongs, getListSongsQueryKey, 
+import {
+  useListSongs, getListSongsQueryKey,
   useCreateSong, useDeleteSong, useMarkSongPlayed,
   useGetSong, getGetSongQueryKey, useUpdateSong,
-  ListSongsStatus, ListSongsSource, Song
+  Song,
 } from "@workspace/api-client-react";
-import { Music, Plus, Search, Play, MoreVertical, Trash2, Mic2, Edit2 } from "lucide-react";
+import { Music, Plus, Search, Play, Trash2, Mic2, Edit2, Fire } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 
+const ART_PALETTES: [string, string][] = [
+  ["#F59E0B","#EF4444"],["#3B82F6","#8B5CF6"],["#10B981","#3B82F6"],
+  ["#F97316","#EC4899"],["#6366F1","#A78BFA"],["#14B8A6","#3B82F6"],
+  ["#F43F5E","#F97316"],["#8B5CF6","#06B6D4"],
+];
+function artColors(s: string): [string, string] {
+  const h = s.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return ART_PALETTES[h % ART_PALETTES.length];
+}
+
 const songSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  artist: z.string().min(1, "Artist is required"),
+  title: z.string().min(1, "请填写歌曲名称"),
+  artist: z.string().min(1, "请填写歌手名称"),
   album: z.string().optional(),
   genre: z.string().optional(),
   notes: z.string().optional(),
 });
-
 type SongFormValues = z.infer<typeof songSchema>;
 
-function EditSongDialog({ songId, open, onOpenChange }: { songId: number | null, open: boolean, onOpenChange: (o: boolean) => void }) {
+function EditSongDialog({ songId, open, onOpenChange }: { songId: number | null; open: boolean; onOpenChange: (o: boolean) => void }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  
   const { data: song, isLoading } = useGetSong(
-    songId || 0,
-    { query: { enabled: !!songId, queryKey: getGetSongQueryKey(songId || 0) } }
+    songId ?? 0,
+    { query: { enabled: !!songId && songId > 0, queryKey: getGetSongQueryKey(songId ?? 0) } }
   );
-
   const updateSong = useUpdateSong();
-
   const form = useForm<SongFormValues>({
     resolver: zodResolver(songSchema),
     defaultValues: { title: "", artist: "", album: "", genre: "", notes: "" },
   });
 
   useEffect(() => {
-    if (song) {
-      form.reset({
-        title: song.title,
-        artist: song.artist,
-        album: song.album || "",
-        genre: song.genre || "",
-        notes: song.notes || "",
-      });
+    if (song && open) {
+      form.reset({ title: song.title, artist: song.artist, album: song.album || "", genre: song.genre || "", notes: song.notes || "" });
     }
-  }, [song, form]);
+  }, [song, open, form]);
 
   const onSubmit = (data: SongFormValues) => {
     if (!songId) return;
@@ -69,8 +68,9 @@ function EditSongDialog({ songId, open, onOpenChange }: { songId: number | null,
         queryClient.invalidateQueries({ queryKey: getListSongsQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetSongQueryKey(songId) });
         onOpenChange(false);
-        toast({ title: "Song updated" });
-      }
+        toast({ title: "歌曲信息已更新" });
+      },
+      onError: () => toast({ title: "更新失败", variant: "destructive" }),
     });
   };
 
@@ -78,40 +78,34 @@ function EditSongDialog({ songId, open, onOpenChange }: { songId: number | null,
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Song</DialogTitle>
-          <DialogDescription>Update track details.</DialogDescription>
+          <DialogTitle>编辑歌曲</DialogTitle>
+          <DialogDescription>修改歌曲信息</DialogDescription>
         </DialogHeader>
         {isLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
+          <div className="space-y-3"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
         ) : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField control={form.control} name="title" render={({ field }) => (
-                <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>歌曲名称</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="artist" render={({ field }) => (
-                <FormItem><FormLabel>Artist</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>歌手</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
               )} />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <FormField control={form.control} name="album" render={({ field }) => (
-                  <FormItem><FormLabel>Album</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>专辑（选填）</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="genre" render={({ field }) => (
-                  <FormItem><FormLabel>Genre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>分类（选填）</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
               </div>
               <FormField control={form.control} name="notes" render={({ field }) => (
-                <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>备注（选填）</FormLabel><FormControl><Textarea {...field} rows={2} /></FormControl><FormMessage /></FormItem>
               )} />
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                <Button type="submit" disabled={updateSong.isPending}>
-                  {updateSong.isPending ? "Saving..." : "Save Changes"}
-                </Button>
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
+                <Button type="submit" disabled={updateSong.isPending}>{updateSong.isPending ? "保存中…" : "保存修改"}</Button>
               </DialogFooter>
             </form>
           </Form>
@@ -121,21 +115,25 @@ function EditSongDialog({ songId, open, onOpenChange }: { songId: number | null,
   );
 }
 
+type StatusFilter = "all" | "played" | "unplayed";
+type SourceFilter = "all" | "student" | "staff";
+
 export default function Songs() {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<ListSongsStatus>("all");
-  const [source, setSource] = useState<ListSongsSource>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [playDialogOpenFor, setPlayDialogOpenFor] = useState<Song | null>(null);
-  const [editDialogOpenFor, setEditDialogOpenFor] = useState<number | null>(null);
+  const [playDialogFor, setPlayDialogFor] = useState<Song | null>(null);
+  const [editDialogFor, setEditDialogFor] = useState<number | null>(null);
+  const [deleteConfirmFor, setDeleteConfirmFor] = useState<Song | null>(null);
   const [djName, setDjName] = useState("");
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: songs, isLoading } = useListSongs(
-    { status, source, search: search || undefined },
-    { query: { queryKey: getListSongsQueryKey({ status, source, search: search || undefined }) } }
+    { status: statusFilter, source: sourceFilter, search: search || undefined },
+    { query: { queryKey: getListSongsQueryKey({ status: statusFilter, source: sourceFilter, search: search || undefined }) } }
   );
 
   const createSong = useCreateSong();
@@ -148,85 +146,91 @@ export default function Songs() {
   });
 
   const onSubmitCreate = (data: SongFormValues) => {
-    createSong.mutate({ data: { ...data, isStudentSubmission: false, submittedBy: "Staff" } }, {
+    createSong.mutate({ data: { ...data, isStudentSubmission: false } }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListSongsQueryKey() });
         setIsCreateOpen(false);
         form.reset();
-        toast({ title: "Song added", description: "Successfully added to the library." });
+        toast({ title: "歌曲已添加到曲库" });
       },
-      onError: () => {
-        toast({ title: "Error", description: "Failed to add song.", variant: "destructive" });
-      }
+      onError: () => toast({ title: "添加失败", variant: "destructive" }),
     });
   };
 
-  const handleDelete = (id: number) => {
-    if (!confirm("Are you sure you want to delete this song?")) return;
-    deleteSong.mutate({ id }, {
+  const handleDelete = (song: Song) => {
+    deleteSong.mutate({ id: song.id }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListSongsQueryKey() });
-        toast({ title: "Song deleted" });
-      }
+        setDeleteConfirmFor(null);
+        toast({ title: `《${song.title}》已从曲库删除` });
+      },
+      onError: () => toast({ title: "删除失败", variant: "destructive" }),
     });
   };
 
   const handlePlay = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!playDialogOpenFor) return;
-    
-    markPlayed.mutate({ id: playDialogOpenFor.id, data: { djName: djName || undefined } }, {
+    if (!playDialogFor) return;
+    markPlayed.mutate({ id: playDialogFor.id, data: { djName: djName || undefined } }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListSongsQueryKey() });
-        setPlayDialogOpenFor(null);
+        queryClient.invalidateQueries({ queryKey: getListSongsQueryKey({}) });
+        setPlayDialogFor(null);
         setDjName("");
-        toast({ title: "Song marked as played", description: "Broadcast log updated." });
-      }
+        toast({ title: `《${playDialogFor.title}》已记录播放` });
+      },
+      onError: () => toast({ title: "记录失败", variant: "destructive" }),
     });
   };
 
+  function getSongBadge(song: Song) {
+    if (song.playedCount >= 8) return { label: "热门歌曲", cls: "bg-red-100 text-red-600 border-red-200" };
+    if (song.isStudentSubmission) return { label: "同学推荐", cls: "bg-blue-100 text-blue-600 border-blue-200" };
+    return null;
+  }
+
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Library</h1>
-          <p className="text-muted-foreground mt-1">Manage the station's music catalog.</p>
+          <h1 className="text-2xl font-bold">歌曲库</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">管理校园广播歌曲资源</p>
         </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="font-bold">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Song
+            <Button className="font-semibold gap-2">
+              <Plus className="h-4 w-4" />添加歌曲
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Song to Library</DialogTitle>
-              <DialogDescription>Manually enter a track for broadcast rotation.</DialogDescription>
+              <DialogTitle>添加歌曲</DialogTitle>
+              <DialogDescription>向曲库手动添加一首歌曲</DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmitCreate)} className="space-y-4">
-                <FormField control={form.control} name="title" render={({ field }) => (
-                  <FormItem><FormLabel>Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="artist" render={({ field }) => (
-                  <FormItem><FormLabel>Artist</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField control={form.control} name="title" render={({ field }) => (
+                    <FormItem><FormLabel>歌曲名称 *</FormLabel><FormControl><Input placeholder="例：稻香" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="artist" render={({ field }) => (
+                    <FormItem><FormLabel>歌手 *</FormLabel><FormControl><Input placeholder="例：周杰伦" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <FormField control={form.control} name="album" render={({ field }) => (
-                    <FormItem><FormLabel>Album (Optional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>专辑（选填）</FormLabel><FormControl><Input placeholder="例：魔杰座" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="genre" render={({ field }) => (
-                    <FormItem><FormLabel>Genre (Optional)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>分类（选填）</FormLabel><FormControl><Input placeholder="例：流行" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
                 <FormField control={form.control} name="notes" render={({ field }) => (
-                  <FormItem><FormLabel>DJ Notes (Optional)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>备注（选填）</FormLabel><FormControl><Textarea placeholder="广播站内部备注…" rows={2} {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <DialogFooter>
-                  <Button type="submit" disabled={createSong.isPending}>
-                    {createSong.isPending ? "Adding..." : "Add Song"}
-                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>取消</Button>
+                  <Button type="submit" disabled={createSong.isPending}>{createSong.isPending ? "添加中…" : "确认添加"}</Button>
                 </DialogFooter>
               </form>
             </Form>
@@ -234,173 +238,172 @@ export default function Songs() {
         </Dialog>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center bg-card p-4 rounded-lg border shadow-sm">
-        <div className="relative flex-1 w-full">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center bg-card p-3 rounded-xl border shadow-sm">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search title, artist, or album..." 
+          <Input
+            placeholder="搜索歌曲、歌手或专辑…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={e => setSearch(e.target.value)}
             className="pl-9 bg-background"
           />
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Select value={status} onValueChange={(v: ListSongsStatus) => setStatus(v)}>
-            <SelectTrigger className="w-[140px] bg-background">
-              <SelectValue placeholder="Status" />
+        <div className="flex gap-2">
+          <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>
+            <SelectTrigger className="w-[120px] bg-background">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="played">Played</SelectItem>
-              <SelectItem value="unplayed">Unplayed</SelectItem>
+              <SelectItem value="all">全部状态</SelectItem>
+              <SelectItem value="played">已播放</SelectItem>
+              <SelectItem value="unplayed">未播放</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={source} onValueChange={(v: ListSongsSource) => setSource(v)}>
-            <SelectTrigger className="w-[140px] bg-background">
-              <SelectValue placeholder="Source" />
+          <Select value={sourceFilter} onValueChange={v => setSourceFilter(v as SourceFilter)}>
+            <SelectTrigger className="w-[120px] bg-background">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Sources</SelectItem>
-              <SelectItem value="staff">Staff</SelectItem>
-              <SelectItem value="student">Student</SelectItem>
+              <SelectItem value="all">全部来源</SelectItem>
+              <SelectItem value="staff">广播站</SelectItem>
+              <SelectItem value="student">同学推荐</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
+      {/* Table */}
+      <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/50 hover:bg-muted/50">
-              <TableHead className="w-[300px]">Track Info</TableHead>
-              <TableHead>Genre / Source</TableHead>
-              <TableHead className="text-right">Plays</TableHead>
-              <TableHead>Last Played</TableHead>
-              <TableHead className="w-[100px]"></TableHead>
+            <TableRow className="bg-muted/40 hover:bg-muted/40">
+              <TableHead className="w-[280px]">歌曲信息</TableHead>
+              <TableHead>分类</TableHead>
+              <TableHead className="text-right">播放次数</TableHead>
+              <TableHead>最近播放</TableHead>
+              <TableHead className="text-center w-[160px]">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
+              Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell><Skeleton className="h-10 w-full" /></TableCell>
-                  <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-6 w-10 ml-auto" /></TableCell>
-                  <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                  <TableCell><div className="flex gap-3"><Skeleton className="h-10 w-10 rounded-lg" /><div className="space-y-1.5"><Skeleton className="h-4 w-28" /><Skeleton className="h-3 w-20" /></div></div></TableCell>
+                  <TableCell><Skeleton className="h-5 w-14" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-10 ml-auto" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-full" /></TableCell>
                 </TableRow>
               ))
             ) : !songs?.length ? (
               <TableRow>
                 <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                  <div className="flex flex-col items-center justify-center">
-                    <Music className="h-8 w-8 mb-2 opacity-20" />
-                    No songs found matching your filters.
-                  </div>
+                  <Music className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                  <p>未找到匹配的歌曲</p>
                 </TableCell>
               </TableRow>
             ) : (
-              songs.map((song) => (
-                <TableRow key={song.id} className="group">
-                  <TableCell>
-                    <div className="font-medium text-foreground">{song.title}</div>
-                    <div className="text-sm text-muted-foreground">{song.artist} {song.album && <span className="opacity-50">| {song.album}</span>}</div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col items-start gap-1">
-                      {song.genre ? (
-                        <Badge variant="outline" className="bg-background text-xs font-mono">{song.genre}</Badge>
-                      ) : <span className="text-muted-foreground text-xs italic">—</span>}
-                      {song.isStudentSubmission && (
-                        <Badge variant="secondary" className="text-[10px] uppercase tracking-wider px-1.5 py-0">Student Req</Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {song.playedCount > 0 ? (
-                      <Badge variant="default" className="bg-primary/10 text-primary hover:bg-primary/20">{song.playedCount}</Badge>
-                    ) : (
-                      <span className="text-muted-foreground opacity-50">0</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {song.lastPlayedAt ? (
-                      <div>
-                        <div>{formatDistanceToNow(new Date(song.lastPlayedAt), { addSuffix: true })}</div>
-                        {song.lastPlayedBy && <div className="text-xs text-muted-foreground">by DJ {song.lastPlayedBy}</div>}
+              songs.map(song => {
+                const [c1, c2] = artColors(song.title);
+                const badge = getSongBadge(song);
+                return (
+                  <TableRow key={song.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg shrink-0 flex items-center justify-center text-white font-black text-sm" style={{ background: `linear-gradient(135deg,${c1},${c2})` }}>
+                          {song.title.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-semibold text-sm truncate flex items-center gap-1.5">
+                            {song.title}
+                            {badge && <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${badge.cls}`}>{badge.label}</span>}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate">{song.artist}{song.album && ` · ${song.album}`}</div>
+                        </div>
                       </div>
-                    ) : (
-                      <span className="text-muted-foreground italic">Never</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button 
-                        size="icon" 
-                        variant="secondary" 
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => setPlayDialogOpenFor(song)}
-                        title="Mark as played"
-                      >
-                        <Play className="h-4 w-4" />
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="icon" variant="ghost" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setPlayDialogOpenFor(song)}>
-                            <Mic2 className="h-4 w-4 mr-2" /> Mark as played...
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setEditDialogOpenFor(song.id)}>
-                            <Edit2 className="h-4 w-4 mr-2" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(song.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                            <Trash2 className="h-4 w-4 mr-2" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        {song.genre && <Badge variant="outline" className="text-xs font-normal">{song.genre}</Badge>}
+                        {song.isStudentSubmission && <div><Badge variant="secondary" className="text-[10px]">同学推荐</Badge></div>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {song.playedCount > 0 ? (
+                        <span className="inline-flex items-center gap-1 font-bold text-primary">{song.playedCount}</span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {song.lastPlayedAt ? (
+                        <div>
+                          <div className="text-sm">{formatDistanceToNow(new Date(song.lastPlayedAt), { addSuffix: true })}</div>
+                          {song.lastPlayedBy && <div className="text-xs text-muted-foreground">{song.lastPlayedBy}</div>}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm italic">未播放</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <Button size="sm" variant="default" className="h-7 px-2 text-xs gap-1" onClick={() => setPlayDialogFor(song)}>
+                          <Play className="h-3 w-3" />播放
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1" onClick={() => setEditDialogFor(song.id)}>
+                          <Edit2 className="h-3 w-3" />编辑
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteConfirmFor(song)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
       </div>
 
-      <Dialog open={!!playDialogOpenFor} onOpenChange={(open) => !open && setPlayDialogOpenFor(null)}>
+      {/* Mark as Played Dialog */}
+      <Dialog open={!!playDialogFor} onOpenChange={open => { if (!open) { setPlayDialogFor(null); setDjName(""); } }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Mark "{playDialogOpenFor?.title}" as Played</DialogTitle>
-            <DialogDescription>Log this track as broadcasted right now.</DialogDescription>
+            <DialogTitle>记录播放 — 《{playDialogFor?.title}》</DialogTitle>
+            <DialogDescription>将此歌曲记录为当前播出，更新播放次数。</DialogDescription>
           </DialogHeader>
           <form onSubmit={handlePlay} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Broadcast by (Optional)</label>
-              <Input 
-                value={djName} 
-                onChange={(e) => setDjName(e.target.value)} 
-                placeholder="e.g. Radio Club Team" 
-              />
+              <label className="text-sm font-medium">播音员（选填）</label>
+              <Input value={djName} onChange={e => setDjName(e.target.value)} placeholder="例：播音部" />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setPlayDialogOpenFor(null)}>Cancel</Button>
-              <Button type="submit" disabled={markPlayed.isPending}>
-                {markPlayed.isPending ? "Logging..." : "Log Play"}
-              </Button>
+              <Button type="button" variant="outline" onClick={() => { setPlayDialogFor(null); setDjName(""); }}>取消</Button>
+              <Button type="submit" disabled={markPlayed.isPending}>{markPlayed.isPending ? "记录中…" : "确认播放"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      <EditSongDialog 
-        songId={editDialogOpenFor} 
-        open={!!editDialogOpenFor} 
-        onOpenChange={(open) => !open && setEditDialogOpenFor(null)} 
-      />
+      {/* Delete Confirm Dialog */}
+      <Dialog open={!!deleteConfirmFor} onOpenChange={open => !open && setDeleteConfirmFor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>删除确认</DialogTitle>
+            <DialogDescription>确定要从曲库删除《{deleteConfirmFor?.title}》吗？此操作不可撤销。</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmFor(null)}>取消</Button>
+            <Button variant="destructive" onClick={() => deleteConfirmFor && handleDelete(deleteConfirmFor)} disabled={deleteSong.isPending}>
+              {deleteSong.isPending ? "删除中…" : "确认删除"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <EditSongDialog songId={editDialogFor} open={!!editDialogFor} onOpenChange={open => !open && setEditDialogFor(null)} />
     </div>
   );
 }

@@ -1,0 +1,420 @@
+The library has serious bugs. Switching to other options results in errors, songs in the library cannot be used for activities, and the submission page fails to confirm approval. Should we have administrator accounts to handle these issues separately? Students shouldn't be able to submit their own applications independently. Please resolve these problems and change the page language to Chinese.
+Transform this project into a fully Chinese K-12 Campus Broadcasting Platform (校园广播站管理系统) instead of a university radio tracker.
+
+========================================
+PROJECT POSITIONING
+========================================
+
+The system serves a K-12 school (Primary School, Junior High School, Senior High School).
+
+Broadcast Schedule:
+
+- 17:30 Evening classes begin
+- 18:15 Music broadcast starts
+- 18:35 Music broadcast ends
+- 20:10 School ends
+
+The platform should feel like a real Chinese school broadcasting station, not a generic admin dashboard.
+
+System Name:
+
+校园之声广播站
+Voice of Campus Radio
+
+System Slogan:
+
+让音乐连接校园生活
+
+========================================
+LANGUAGE
+========================================
+
+Convert all interface text to Simplified Chinese.
+
+Keep English only as secondary subtitles where appropriate.
+
+Examples:
+
+Dashboard → 广播中心
+Library → 歌曲库
+Submissions → 点歌审核
+Schedule → 广播安排
+Announcements → 校园公告
+Charts → 热门榜单
+Settings → 系统设置
+
+========================================
+SIDEBAR NAVIGATION
+========================================
+
+🏠 广播中心
+
+🎵 歌曲库
+
+📝 点歌审核
+
+📅 广播安排
+
+📢 校园公告
+
+🏆 热门榜单
+
+⚙️ 系统设置
+
+========================================
+HOMEPAGE REDESIGN
+========================================
+
+The Dashboard should focus on LIVE BROADCAST STATUS.
+
+At the top of the page create a large hero section.
+
+Title:
+
+正在播放
+
+Display:
+
+- Album artwork
+- Song title
+- Artist
+- Progress bar
+- Remaining time
+- Broadcast status
+
+Example:
+
+正在播放
+
+稻香
+周杰伦
+
+广播时段进行中
+
+========================================
+AUTOMATIC BROADCAST STATUS
+========================================
+
+Automatically determine status based on current time.
+
+Before 18:15:
+
+广播未开始
+
+Display:
+
+下一次广播时间：18:15
+
+----------------------------------------
+
+18:15 - 18:35:
+
+音乐广播进行中
+
+Display:
+
+正在播放歌曲
+
+----------------------------------------
+
+18:35 - 20:10:
+
+晚自习进行中
+
+Display:
+
+音乐广播已结束
+
+----------------------------------------
+
+After 20:10:
+
+今日广播已结束
+
+Display:
+
+感谢收听校园广播
+
+========================================
+DASHBOARD STATISTICS
+========================================
+
+Rename all cards:
+
+曲库总数
+已收录歌曲数量
+
+本周播放
+本周已播放歌曲
+
+累计播放
+广播总播放次数
+
+待审核点歌
+等待广播站审核
+
+========================================
+TODAY'S SCHEDULE CARD
+========================================
+
+Title:
+
+今日广播安排
+
+Content:
+
+17:30 晚自习开始
+
+18:15 音乐广播开始
+
+18:35 音乐广播结束
+
+20:10 放学
+
+========================================
+SONG LIBRARY PAGE
+========================================
+
+Page Title:
+
+歌曲库
+
+Subtitle:
+
+管理校园广播歌曲资源
+
+Search Placeholder:
+
+搜索歌曲、歌手或专辑
+
+Button:
+
+添加歌曲
+
+Columns:
+
+歌曲信息
+
+分类
+
+播放次数
+
+最近播放
+
+操作
+
+Add album artwork thumbnails.
+
+Add badges:
+
+热门歌曲
+
+最新加入
+
+推荐歌曲
+
+========================================
+SONG REQUEST APPROVAL PAGE
+========================================
+
+Page Title:
+
+点歌审核
+
+Subtitle:
+
+审核同学提交的歌曲申请
+
+Tabs:
+
+待审核
+
+已通过
+
+已拒绝
+
+全部
+
+Each request card should contain:
+
+- Album artwork
+- Song title
+- Artist
+- Student name
+- Grade
+- Class
+- Dedication message
+- Submission time
+
+Example:
+
+投稿人：
+
+张同学
+
+高二（3）班
+
+祝福留言：
+
+送给高三全体同学
+
+祝大家考试顺利！
+
+Buttons:
+
+通过审核
+
+拒绝申请
+
+========================================
+STUDENT SONG REQUEST FORM
+========================================
+
+Create a public submission page.
+
+Title:
+
+我要点歌
+
+Subtitle:
+
+向校园广播站推荐你喜欢的歌曲
+
+Fields:
+
+歌曲名称
+
+歌手
+
+投稿人
+
+年级
+
+班级
+
+祝福留言
+
+匿名投稿
+
+Submit Button:
+
+提交点歌
+
+========================================
+CAMPUS DEDICATION FEATURE
+========================================
+
+Add a Campus Dedications section.
+
+Students can leave messages together with songs.
+
+Examples:
+
+送给高三全体同学：
+
+高考加油！
+
+----------------------------------------
+
+送给初三（2）班：
+
+愿大家取得理想成绩！
+
+========================================
+SCHEDULE PAGE
+========================================
+
+Page Title:
+
+广播安排
+
+Subtitle:
+
+每日广播时间表
+
+Schedule:
+
+17:30 晚自习开始
+
+18:15 音乐广播
+
+18:35 音乐广播结束
+
+20:10 放学
+
+========================================
+ANNOUNCEMENTS PAGE
+========================================
+
+Page Title:
+
+校园公告
+
+Subtitle:
+
+广播站通知与校园动态
+
+Example announcements:
+
+广播站招募新成员
+
+校园歌唱比赛报名开始
+
+毕业季特别点歌活动
+
+========================================
+CHARTS PAGE
+========================================
+
+Page Title:
+
+校园热歌榜
+
+Subtitle:
+
+最受欢迎的校园歌曲排行
+
+Sections:
+
+本周热播
+
+本月热播
+
+最受欢迎歌手
+
+点歌次数排行
+
+========================================
+UI STYLE
+========================================
+
+Use modern Chinese school broadcasting style.
+
+Requirements:
+
+- Friendly and clean
+- Modern card layout
+- Mobile responsive
+- Album artwork throughout the system
+- Smooth animations
+- Rounded corners
+- Soft shadows
+- Live status indicators
+- Progress bars
+- School radio atmosphere
+
+Avoid generic admin dashboard appearance.
+
+The website should feel like a real Chinese campus broadcasting center.
+
+========================================
+FOOTER
+========================================
+
+校园之声广播站
+
+让音乐连接校园生活
+
+Voice of Campus Radio
+
+Use mock Chinese student data, Chinese songs, and realistic campus broadcasting examples instead of foreign university examples.

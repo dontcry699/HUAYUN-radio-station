@@ -10,8 +10,12 @@ import Submissions from "@/pages/submissions";
 import Dedications from "@/pages/dedications";
 import Schedule from "@/pages/schedule";
 import Announcements from "@/pages/announcements";
+import Charts from "@/pages/charts";
+import Settings from "@/pages/settings";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1, staleTime: 30000 } },
+});
 
 function Router() {
   return (
@@ -23,13 +27,15 @@ function Router() {
         <Route path="/dedications" component={Dedications} />
         <Route path="/schedule" component={Schedule} />
         <Route path="/announcements" component={Announcements} />
+        <Route path="/charts" component={Charts} />
+        <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -41,5 +47,3 @@ function App() {
     </QueryClientProvider>
   );
 }
-
-export default App;

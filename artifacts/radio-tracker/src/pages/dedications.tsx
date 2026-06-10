@@ -1,227 +1,105 @@
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useListSubmissions, getListSubmissionsQueryKey, useCreateSubmission } from "@workspace/api-client-react";
-import { Heart, Send } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useListSubmissions, getListSubmissionsQueryKey } from "@workspace/api-client-react";
+import { Heart, MessageSquare, User } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/hooks/use-toast";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formatDistanceToNow } from "date-fns";
 
-const CARD_GRADIENTS = [
-  "from-amber-50 to-orange-50 border-amber-100",
-  "from-pink-50 to-rose-50 border-pink-100",
-  "from-blue-50 to-sky-50 border-blue-100",
-  "from-purple-50 to-violet-50 border-purple-100",
-  "from-green-50 to-emerald-50 border-green-100",
-  "from-yellow-50 to-amber-50 border-yellow-100",
+const ART_PALETTES: [string, string][] = [
+  ["#F59E0B","#EF4444"],["#3B82F6","#8B5CF6"],["#10B981","#3B82F6"],
+  ["#F97316","#EC4899"],["#6366F1","#A78BFA"],["#14B8A6","#3B82F6"],
+  ["#F43F5E","#F97316"],["#8B5CF6","#06B6D4"],
 ];
-
-const dedicationSchema = z.object({
-  title: z.string().min(1, "Song title is required"),
-  artist: z.string().min(1, "Artist is required"),
-  isAnonymous: z.boolean().default(false),
-  studentName: z.string().optional(),
-  grade: z.string().optional(),
-  className: z.string().optional(),
-  dedicationTo: z.string().min(1, "Please enter who to dedicate this to"),
-  dedicationMessage: z.string().optional(),
-});
-type DedicationFormValues = z.infer<typeof dedicationSchema>;
-
-function DedicationForm({ onSuccess }: { onSuccess: () => void }) {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const createSubmission = useCreateSubmission();
-
-  const form = useForm<DedicationFormValues>({
-    resolver: zodResolver(dedicationSchema),
-    defaultValues: { title: "", artist: "", isAnonymous: false, studentName: "", grade: "", className: "", dedicationTo: "", dedicationMessage: "" },
-  });
-
-  const isAnonymous = form.watch("isAnonymous");
-
-  const onSubmit = (data: DedicationFormValues) => {
-    createSubmission.mutate({
-      data: {
-        title: data.title,
-        artist: data.artist,
-        isAnonymous: data.isAnonymous,
-        studentName: data.isAnonymous ? undefined : data.studentName || undefined,
-        grade: data.grade || undefined,
-        className: data.className || undefined,
-        dedicationTo: data.dedicationTo,
-        dedicationMessage: data.dedicationMessage || undefined,
-      },
-    }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListSubmissionsQueryKey() });
-        form.reset();
-        onSuccess();
-        toast({ title: "Dedication sent!", description: "Your dedication will appear here once approved." });
-      },
-      onError: () => toast({ title: "Error", description: "Failed to send. Please try again.", variant: "destructive" }),
-    });
-  };
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-        <div className="grid grid-cols-2 gap-4">
-          <FormField control={form.control} name="title" render={({ field }) => (
-            <FormItem><FormLabel>Song Title <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="e.g. Golden Hour" {...field} /></FormControl><FormMessage /></FormItem>
-          )} />
-          <FormField control={form.control} name="artist" render={({ field }) => (
-            <FormItem><FormLabel>Artist <span className="text-destructive">*</span></FormLabel><FormControl><Input placeholder="e.g. JVKE" {...field} /></FormControl><FormMessage /></FormItem>
-          )} />
-        </div>
-
-        <FormField control={form.control} name="dedicationTo" render={({ field }) => (
-          <FormItem>
-            <FormLabel>Dedicate this song to <span className="text-destructive">*</span></FormLabel>
-            <FormControl><Input placeholder="e.g. My best friend Alex" {...field} /></FormControl>
-            <FormMessage />
-          </FormItem>
-        )} />
-
-        <FormField control={form.control} name="dedicationMessage" render={({ field }) => (
-          <FormItem>
-            <FormLabel>Your message (Optional)</FormLabel>
-            <FormControl><Textarea placeholder="Write something special..." rows={3} {...field} /></FormControl>
-          </FormItem>
-        )} />
-
-        <FormField control={form.control} name="isAnonymous" render={({ field }) => (
-          <FormItem className="flex items-center gap-2 space-y-0">
-            <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-            <FormLabel className="font-normal cursor-pointer">Send anonymously</FormLabel>
-          </FormItem>
-        )} />
-
-        {!isAnonymous && (
-          <div className="grid grid-cols-3 gap-3">
-            <FormField control={form.control} name="studentName" render={({ field }) => (
-              <FormItem><FormLabel>Your Name</FormLabel><FormControl><Input placeholder="Name" {...field} /></FormControl></FormItem>
-            )} />
-            <FormField control={form.control} name="grade" render={({ field }) => (
-              <FormItem><FormLabel>Grade</FormLabel><FormControl><Input placeholder="Grade 8" {...field} /></FormControl></FormItem>
-            )} />
-            <FormField control={form.control} name="className" render={({ field }) => (
-              <FormItem><FormLabel>Class</FormLabel><FormControl><Input placeholder="Class A" {...field} /></FormControl></FormItem>
-            )} />
-          </div>
-        )}
-
-        <DialogFooter>
-          <Button type="submit" disabled={createSubmission.isPending} className="w-full">
-            {createSubmission.isPending ? "Sending..." : "Send Dedication"}
-          </Button>
-        </DialogFooter>
-      </form>
-    </Form>
-  );
+function artColors(s: string): [string, string] {
+  const h = s.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return ART_PALETTES[h % ART_PALETTES.length];
 }
 
 export default function Dedications() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const { data: allSubmissions, isLoading } = useListSubmissions(
+  const { data: submissions, isLoading } = useListSubmissions(
     { status: "approved" },
     { query: { queryKey: getListSubmissionsQueryKey({ status: "approved" }) } }
   );
 
-  const dedications = allSubmissions?.filter(
-    (s) => s.dedicationTo || s.dedicationMessage
-  ) ?? [];
+  const withDedications = submissions?.filter(s => s.dedicationTo || s.dedicationMessage || s.message) ?? [];
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-2">
-            <Heart className="h-7 w-7 text-pink-500 fill-pink-100" />
-            Campus Dedications
-          </h1>
-          <p className="text-muted-foreground mt-1">Approved song dedications from students — airing during the broadcast.</p>
-        </div>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button className="font-bold gap-2">
-              <Send className="h-4 w-4" />
-              Send a Dedication
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Send a Song Dedication</DialogTitle>
-              <DialogDescription>Request a song and add a personal message to be shared on-air.</DialogDescription>
-            </DialogHeader>
-            <DedicationForm onSuccess={() => setIsOpen(false)} />
-          </DialogContent>
-        </Dialog>
+    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Heart className="h-6 w-6 text-pink-500" />校园寄语
+        </h1>
+        <p className="text-muted-foreground text-sm mt-0.5">同学们在点歌时留下的美好祝福</p>
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-xl border p-5 space-y-3">
-              <Skeleton className="h-5 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-4 w-2/3" />
-            </div>
+            <Card key={i} className="overflow-hidden">
+              <CardContent className="pt-5 space-y-3">
+                <Skeleton className="h-12 w-12 rounded-xl" />
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+              </CardContent>
+            </Card>
           ))}
         </div>
-      ) : !dedications.length ? (
-        <div className="text-center py-20 border border-dashed rounded-2xl">
-          <Heart className="h-14 w-14 mx-auto mb-4 text-pink-200 fill-pink-50" />
-          <h3 className="text-xl font-bold text-foreground">No dedications yet</h3>
-          <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
-            Be the first to send a song dedication to someone special on campus!
-          </p>
-          <Button className="mt-6 gap-2" onClick={() => setIsOpen(true)}>
-            <Send className="h-4 w-4" />
-            Send the first dedication
-          </Button>
+      ) : !withDedications.length ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed rounded-2xl text-muted-foreground">
+          <Heart className="h-14 w-14 mb-4 text-pink-200" />
+          <h3 className="text-lg font-semibold text-foreground">暂无校园寄语</h3>
+          <p className="text-sm mt-1 max-w-sm">同学们在点歌时填写寄语后，会在这里展示</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {dedications.map((d, i) => {
-            const gradient = CARD_GRADIENTS[i % CARD_GRADIENTS.length];
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {withDedications.map(sub => {
+            const [c1, c2] = artColors(sub.title);
             return (
-              <div key={d.id} className={`rounded-xl border bg-gradient-to-br p-5 space-y-3 hover:shadow-md transition-shadow ${gradient}`}>
-                <div>
-                  <p className="font-extrabold text-base leading-tight">{d.title}</p>
-                  <p className="text-sm text-muted-foreground">{d.artist}</p>
-                </div>
+              <Card key={sub.id} className="overflow-hidden hover:shadow-md transition-all hover:-translate-y-0.5 border">
+                <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg,${c1},${c2})` }} />
+                <CardContent className="pt-4 pb-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-xl shrink-0 flex items-center justify-center text-white font-black text-base" style={{ background: `linear-gradient(135deg,${c1},${c2})` }}>
+                      {sub.title.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm truncate">《{sub.title}》</p>
+                      <p className="text-xs text-muted-foreground">{sub.artist}</p>
+                    </div>
+                  </div>
 
-                <div className="flex items-center gap-1.5 text-sm font-medium text-pink-600">
-                  <Heart className="h-3.5 w-3.5 fill-pink-200" />
-                  To: <span className="font-bold">{d.dedicationTo || "Someone special"}</span>
-                </div>
-
-                {d.dedicationMessage && (
-                  <blockquote className="italic text-sm text-foreground/80 border-l-2 border-pink-200 pl-3 leading-relaxed">
-                    "{d.dedicationMessage}"
-                  </blockquote>
-                )}
-
-                <div className="text-xs text-muted-foreground pt-1 border-t border-current/10">
-                  From{" "}
-                  <span className="font-semibold">
-                    {d.isAnonymous ? "Anonymous" : (d.studentName || "A student")}
-                  </span>
-                  {(d.grade || d.className) && (
-                    <span className="opacity-70"> · {[d.grade, d.className].filter(Boolean).join(", ")}</span>
+                  {(sub.dedicationTo || sub.dedicationMessage) && (
+                    <div className="bg-pink-50 border border-pink-100 rounded-xl p-3 space-y-1.5">
+                      {sub.dedicationTo && (
+                        <p className="text-xs font-bold text-pink-600 flex items-center gap-1">
+                          <Heart className="h-3 w-3" />送给：{sub.dedicationTo}
+                        </p>
+                      )}
+                      {sub.dedicationMessage && (
+                        <p className="text-sm text-gray-700 italic leading-relaxed">"{sub.dedicationMessage}"</p>
+                      )}
+                    </div>
                   )}
-                </div>
-              </div>
+
+                  {sub.message && !sub.dedicationMessage && (
+                    <div className="flex gap-2 text-sm text-muted-foreground border rounded-xl p-3">
+                      <MessageSquare className="w-3.5 h-3.5 shrink-0 mt-0.5 text-primary" />
+                      <p className="italic leading-relaxed">"{sub.message}"</p>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                    <div className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      <span>
+                        {sub.isAnonymous ? "匿名同学" : (sub.studentName || "同学")}
+                        {(sub.grade || sub.className) && `  ${sub.grade ?? ""}${sub.className ? `（${sub.className}班）` : ""}`}
+                      </span>
+                    </div>
+                    <span>{formatDistanceToNow(new Date(sub.createdAt), { addSuffix: true })}</span>
+                  </div>
+                </CardContent>
+              </Card>
             );
           })}
         </div>
