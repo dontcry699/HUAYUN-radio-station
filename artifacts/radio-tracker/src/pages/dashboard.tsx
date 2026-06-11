@@ -37,19 +37,46 @@ const STATUS_DOT: Record<string, string> = {
   "ended": "bg-gray-400",
 };
 
+interface ActiveEvent {
+  id: number; name: string; description: string | null;
+  bannerColor: string; emoji: string; startDate: string; endDate: string;
+}
+
 /** Student/public view — clock, status, countdown, schedule, announcements */
 function StudentDashboard() {
   const { status, label, sublabel, isLive, countdownSeconds, countdownLabel, cfg } = useBroadcastStatus();
   const scheduleItems = getScheduleItems(cfg);
   const { totalMinutes: nowMin } = bangkokParts();
+  const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null);
 
   const { data: announcements } = useListAnnouncements({}, { query: { queryKey: getListAnnouncementsQueryKey({}) } });
   const { data: topSongs } = useListRecentPlays({ limit: 5 }, { query: { queryKey: getListRecentPlaysQueryKey({ limit: 5 }) } });
 
   const activeAnnouncements = announcements?.filter(a => a.isActive).slice(0, 4) ?? [];
 
+  const BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+  useEffect(() => {
+    fetch(`${BASE}/api/events/active`).then(r => r.json()).then(d => setActiveEvent(d)).catch(() => {});
+  }, []);
+
   return (
     <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Event Banner */}
+      {activeEvent && (
+        <div className="rounded-2xl overflow-hidden shadow-md border" style={{ borderColor: activeEvent.bannerColor + "40" }}>
+          <div className="px-5 py-4 flex items-center gap-3" style={{ background: `linear-gradient(135deg, ${activeEvent.bannerColor}20, ${activeEvent.bannerColor}08)` }}>
+            <span className="text-3xl shrink-0">{activeEvent.emoji}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ background: activeEvent.bannerColor }}>特别活动</span>
+                <h2 className="font-bold text-base" style={{ color: activeEvent.bannerColor }}>{activeEvent.name}</h2>
+              </div>
+              {activeEvent.description && <p className="text-sm text-muted-foreground mt-0.5 leading-snug line-clamp-1">{activeEvent.description}</p>}
+              <p className="text-xs text-muted-foreground mt-0.5">{activeEvent.startDate} — {activeEvent.endDate}</p>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">广播中心</h1>

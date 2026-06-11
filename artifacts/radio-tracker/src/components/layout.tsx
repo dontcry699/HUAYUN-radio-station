@@ -3,6 +3,7 @@ import {
   RadioTower, Music, ClipboardList, Calendar, Megaphone,
   Trophy, Settings, LayoutDashboard, Menu, Heart,
   LogIn, LogOut, Users, ShieldCheck, Mic2,
+  BarChart3, CalendarDays, MessageSquarePlus, HardDrive, Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -13,39 +14,48 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  roles?: Array<"broadcaster" | "admin" | "public">;
+  roles: Array<"public" | "broadcaster" | "admin">;
 }
 
 const ALL_NAV: NavItem[] = [
-  { href: "/", label: "广播中心", icon: LayoutDashboard, roles: ["public", "broadcaster", "admin"] },
-  { href: "/library", label: "歌曲库", icon: Music, roles: ["broadcaster", "admin"] },
-  { href: "/submissions", label: "点歌审核", icon: ClipboardList, roles: ["public", "broadcaster", "admin"] },
-  { href: "/dedications", label: "校园寄语", icon: Heart, roles: ["public", "broadcaster", "admin"] },
-  { href: "/schedule", label: "广播安排", icon: Calendar, roles: ["public", "broadcaster", "admin"] },
-  { href: "/announcements", label: "校园公告", icon: Megaphone, roles: ["public", "broadcaster", "admin"] },
-  { href: "/charts", label: "热门榜单", icon: Trophy, roles: ["public", "broadcaster", "admin"] },
-  { href: "/users", label: "用户管理", icon: Users, roles: ["admin"] },
-  { href: "/settings", label: "系统设置", icon: Settings, roles: ["admin"] },
+  { href: "/",            label: "广播中心",  icon: LayoutDashboard,    roles: ["public", "broadcaster", "admin"] },
+  { href: "/library",     label: "歌曲库",    icon: Music,              roles: ["broadcaster", "admin"] },
+  { href: "/submissions", label: "点歌审核",  icon: ClipboardList,      roles: ["public", "broadcaster", "admin"] },
+  { href: "/dedications", label: "校园寄语",  icon: Heart,              roles: ["public", "broadcaster", "admin"] },
+  { href: "/schedule",    label: "广播安排",  icon: Calendar,           roles: ["public", "broadcaster", "admin"] },
+  { href: "/announcements",label: "校园公告", icon: Megaphone,          roles: ["public", "broadcaster", "admin"] },
+  { href: "/charts",      label: "热门榜单",  icon: Trophy,             roles: ["public", "broadcaster", "admin"] },
+  { href: "/feedback",    label: "意见反馈",  icon: MessageSquarePlus,  roles: ["public", "broadcaster", "admin"] },
+  { href: "/analytics",   label: "数据统计",  icon: BarChart3,          roles: ["broadcaster", "admin"] },
+  { href: "/events",      label: "活动管理",  icon: CalendarDays,       roles: ["admin"] },
+  { href: "/backup",      label: "数据备份",  icon: HardDrive,          roles: ["admin"] },
+  { href: "/users",       label: "用户管理",  icon: Users,              roles: ["admin"] },
+  { href: "/settings",    label: "系统设置",  icon: Settings,           roles: ["admin"] },
+  { href: "/about",       label: "关于系统",  icon: Info,               roles: ["public", "broadcaster", "admin"] },
 ];
 
-const statusColors: Record<string, { dot: string; text: string }> = {
-  "school-not-started": { dot: "bg-gray-400", text: "text-gray-500" },
-  "preparing": { dot: "bg-amber-400", text: "text-amber-600" },
-  "live": { dot: "bg-green-500 live-dot", text: "text-green-600 font-bold" },
-  "study-session": { dot: "bg-blue-400", text: "text-blue-600" },
-  "ended": { dot: "bg-gray-400", text: "text-gray-500" },
+const STATUS_DOT: Record<string, string> = {
+  "school-not-started": "bg-gray-400",
+  "preparing":          "bg-amber-400",
+  "live":               "bg-green-500",
+  "study-session":      "bg-blue-400",
+  "ended":              "bg-gray-400",
 };
-
+const STATUS_TEXT: Record<string, string> = {
+  "school-not-started": "text-gray-500",
+  "preparing":          "text-amber-600",
+  "live":               "text-green-600 font-bold",
+  "study-session":      "text-blue-600",
+  "ended":              "text-gray-500",
+};
 const ROLE_LABEL: Record<string, string> = { admin: "管理员", broadcaster: "播音员" };
 const ROLE_ICON: Record<string, typeof ShieldCheck> = { admin: ShieldCheck, broadcaster: Mic2 };
 
 function SidebarInner({ location, onNavClick }: { location: string; onNavClick?: () => void }) {
-  const { status, label } = useBroadcastStatus();
+  const { status, label, isLive } = useBroadcastStatus();
   const { user, isBroadcaster, isAdmin, logout } = useAuth();
-  const sc = statusColors[status];
 
-  const visibleItems = ALL_NAV.filter(item => {
-    if (!item.roles) return true;
+  const visible = ALL_NAV.filter(item => {
     if (item.roles.includes("public")) return true;
     if (isAdmin && item.roles.includes("admin")) return true;
     if (isBroadcaster && item.roles.includes("broadcaster")) return true;
@@ -70,9 +80,9 @@ function SidebarInner({ location, onNavClick }: { location: string; onNavClick?:
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-auto py-3">
+      <nav className="flex-1 overflow-auto py-2">
         <ul className="space-y-0.5 px-2">
-          {visibleItems.map((item) => {
+          {visible.map((item) => {
             const isActive = location === item.href;
             return (
               <li key={item.href}>
@@ -92,15 +102,13 @@ function SidebarInner({ location, onNavClick }: { location: string; onNavClick?:
         </ul>
       </nav>
 
-      {/* Bottom: user info + status */}
+      {/* Bottom */}
       <div className="p-3 border-t border-sidebar-border space-y-2">
-        {/* Status indicator */}
         <div className="flex items-center gap-2 px-2 py-2 rounded-lg bg-sidebar-accent/60">
-          <div className={`w-2 h-2 rounded-full shrink-0 ${sc.dot}`} />
-          <span className={`text-xs leading-tight truncate ${sc.text}`}>{label}</span>
+          <div className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[status]} ${isLive ? "live-dot" : ""}`} />
+          <span className={`text-xs leading-tight truncate ${STATUS_TEXT[status]}`}>{label}</span>
         </div>
 
-        {/* User / Login */}
         {user ? (
           <div className="bg-sidebar-accent rounded-lg p-2.5 space-y-2">
             <div className="flex items-center gap-2">
@@ -114,12 +122,7 @@ function SidebarInner({ location, onNavClick }: { location: string; onNavClick?:
                 <p className="text-[10px] text-muted-foreground">{ROLE_LABEL[user.role] ?? user.role}</p>
               </div>
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="w-full text-xs h-7 gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              onClick={logout}
-            >
+            <Button size="sm" variant="ghost" className="w-full text-xs h-7 gap-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={logout}>
               <LogOut className="h-3 w-3" />退出登录
             </Button>
           </div>
@@ -131,8 +134,8 @@ function SidebarInner({ location, onNavClick }: { location: string; onNavClick?:
           </Link>
         )}
 
-        <div className="text-center text-[10px] text-muted-foreground/60 pb-1">
-          Voice of Campus Radio
+        <div className="text-center text-[10px] text-muted-foreground/60 pb-0.5">
+          V2.2 Beta · Voice of Campus Radio
         </div>
       </div>
     </div>
@@ -148,9 +151,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <Sheet>
         <div className="md:hidden flex items-center border-b px-4 py-3 bg-sidebar sticky top-0 z-10">
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="mr-2 -ml-2">
-              <Menu className="h-5 w-5" />
-            </Button>
+            <Button variant="ghost" size="icon" className="mr-2 -ml-2"><Menu className="h-5 w-5" /></Button>
           </SheetTrigger>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
@@ -178,7 +179,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
         <footer className="border-t bg-sidebar/50 py-4 px-6 text-center">
           <p className="text-sm font-semibold text-foreground/80">校园之声广播站</p>
-          <p className="text-xs text-muted-foreground mt-0.5">让音乐连接校园生活 · Voice of Campus Radio</p>
+          <p className="text-xs text-muted-foreground mt-0.5">让音乐连接校园生活 · V2.2 Beta · Voice of Campus Radio</p>
         </footer>
       </main>
     </div>

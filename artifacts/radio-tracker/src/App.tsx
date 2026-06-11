@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +14,11 @@ import Charts from "@/pages/charts";
 import Settings from "@/pages/settings";
 import LoginPage from "@/pages/login";
 import UsersPage from "@/pages/users";
+import EventsPage from "@/pages/events";
+import AnalyticsPage from "@/pages/analytics";
+import FeedbackPage from "@/pages/feedback";
+import AboutPage from "@/pages/about";
+import BackupPage from "@/pages/backup";
 import { AuthProvider, useAuth } from "@/context/auth-context";
 
 const queryClient = new QueryClient({
@@ -43,6 +48,11 @@ function Router() {
         <Route path="/schedule" component={Schedule} />
         <Route path="/announcements" component={Announcements} />
         <Route path="/charts" component={Charts} />
+        <Route path="/feedback" component={FeedbackPage} />
+        <Route path="/about" component={AboutPage} />
+        <Route path="/analytics"><BroadcasterRoute component={AnalyticsPage} /></Route>
+        <Route path="/events"><AdminRoute component={EventsPage} /></Route>
+        <Route path="/backup"><AdminRoute component={BackupPage} /></Route>
         <Route path="/settings"><AdminRoute component={Settings} /></Route>
         <Route path="/users"><AdminRoute component={UsersPage} /></Route>
         <Route component={NotFound} />

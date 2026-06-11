@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, songsTable } from "@workspace/db";
+import { db, songsTable, playsTable } from "@workspace/db";
 import { eq, ilike, or, sql, desc, and } from "drizzle-orm";
 import {
   ListSongsQueryParams,
@@ -168,6 +168,14 @@ router.post("/songs/:id/play", async (req, res) => {
     res.status(404).json({ error: "Song not found" });
     return;
   }
+  // Log to plays history table
+  await db.insert(playsTable).values({
+    songId: song.id,
+    songTitle: song.title,
+    songArtist: song.artist,
+    playedBy: body.djName ?? null,
+    playedAt: new Date(),
+  });
   res.json({
     ...song,
     lastPlayedAt: song.lastPlayedAt ? song.lastPlayedAt.toISOString() : null,
