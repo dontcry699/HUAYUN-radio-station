@@ -9,8 +9,7 @@ import {
   useCreateSubmission, useUpdateSubmission, useDeleteSubmission,
   Submission,
 } from "@workspace/api-client-react";
-import { ClipboardList, CheckCircle, XCircle, Clock, Trash2, Check, X, MessageSquare, Send, Heart, User } from "lucide-react";
-
+import { ClipboardList, CheckCircle, XCircle, Clock, Trash2, Check, X, MessageSquare, Send, Heart, User, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +20,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 
 const ART_PALETTES: [string, string][] = [
   ["#F59E0B","#EF4444"],["#3B82F6","#8B5CF6"],["#10B981","#3B82F6"],
@@ -49,36 +49,25 @@ function SubmitForm({ onSuccess }: { onSuccess: () => void }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const createSubmission = useCreateSubmission();
-
   const form = useForm<SubmitFormValues>({
     resolver: zodResolver(submitSchema),
-    defaultValues: {
-      title: "", artist: "", isAnonymous: false, studentName: "", grade: "",
-      className: "", message: "", hasDedication: false, dedicationTo: "", dedicationMessage: "",
-    },
+    defaultValues: { title: "", artist: "", isAnonymous: false, studentName: "", grade: "", className: "", message: "", hasDedication: false, dedicationTo: "", dedicationMessage: "" },
   });
-
   const isAnonymous = form.watch("isAnonymous");
   const hasDedication = form.watch("hasDedication");
 
   const onSubmit = (data: SubmitFormValues) => {
-    createSubmission.mutate({
-      data: {
-        title: data.title,
-        artist: data.artist,
-        isAnonymous: data.isAnonymous,
-        studentName: data.isAnonymous ? undefined : data.studentName || undefined,
-        grade: data.grade || undefined,
-        className: data.className || undefined,
-        message: data.message || undefined,
-        dedicationTo: data.hasDedication ? data.dedicationTo || undefined : undefined,
-        dedicationMessage: data.hasDedication ? data.dedicationMessage || undefined : undefined,
-      },
-    }, {
+    createSubmission.mutate({ data: {
+      title: data.title, artist: data.artist, isAnonymous: data.isAnonymous,
+      studentName: data.isAnonymous ? undefined : data.studentName || undefined,
+      grade: data.grade || undefined, className: data.className || undefined,
+      message: data.message || undefined,
+      dedicationTo: data.hasDedication ? data.dedicationTo || undefined : undefined,
+      dedicationMessage: data.hasDedication ? data.dedicationMessage || undefined : undefined,
+    } }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListSubmissionsQueryKey() });
-        form.reset();
-        onSuccess();
+        form.reset(); onSuccess();
         toast({ title: "点歌成功！", description: "您的申请已提交，等待广播站审核。" });
       },
       onError: () => toast({ title: "提交失败", description: "请稍后再试。", variant: "destructive" }),
@@ -96,20 +85,17 @@ function SubmitForm({ onSuccess }: { onSuccess: () => void }) {
             <FormItem><FormLabel>歌手 *</FormLabel><FormControl><Input placeholder="例：周杰伦" {...field} /></FormControl><FormMessage /></FormItem>
           )} />
         </div>
-
         <FormField control={form.control} name="isAnonymous" render={({ field }) => (
           <FormItem className="flex items-center gap-2 space-y-0">
             <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
             <FormLabel className="font-normal cursor-pointer">匿名投稿</FormLabel>
           </FormItem>
         )} />
-
         {!isAnonymous && (
           <FormField control={form.control} name="studentName" render={({ field }) => (
             <FormItem><FormLabel>投稿人</FormLabel><FormControl><Input placeholder="您的姓名" {...field} /></FormControl></FormItem>
           )} />
         )}
-
         <div className="grid grid-cols-2 gap-3">
           <FormField control={form.control} name="grade" render={({ field }) => (
             <FormItem><FormLabel>年级（选填）</FormLabel><FormControl><Input placeholder="例：高二" {...field} /></FormControl></FormItem>
@@ -118,18 +104,14 @@ function SubmitForm({ onSuccess }: { onSuccess: () => void }) {
             <FormItem><FormLabel>班级（选填）</FormLabel><FormControl><Input placeholder="例：三班" {...field} /></FormControl></FormItem>
           )} />
         </div>
-
         <FormField control={form.control} name="message" render={({ field }) => (
           <FormItem><FormLabel>祝福留言（选填）</FormLabel><FormControl><Textarea placeholder="向广播站说点什么…" rows={2} {...field} /></FormControl></FormItem>
         )} />
-
         <div className="border rounded-xl p-4 space-y-3 bg-pink-50/50">
           <FormField control={form.control} name="hasDedication" render={({ field }) => (
             <FormItem className="flex items-center gap-2 space-y-0">
               <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-              <FormLabel className="font-semibold cursor-pointer flex items-center gap-1.5">
-                <Heart className="h-3.5 w-3.5 text-pink-500" />添加寄语
-              </FormLabel>
+              <FormLabel className="font-semibold cursor-pointer flex items-center gap-1.5"><Heart className="h-3.5 w-3.5 text-pink-500" />添加寄语</FormLabel>
             </FormItem>
           )} />
           {hasDedication && (
@@ -143,7 +125,6 @@ function SubmitForm({ onSuccess }: { onSuccess: () => void }) {
             </div>
           )}
         </div>
-
         <DialogFooter>
           <Button type="submit" disabled={createSubmission.isPending} className="w-full">
             {createSubmission.isPending ? "提交中…" : "提交点歌"}
@@ -155,11 +136,7 @@ function SubmitForm({ onSuccess }: { onSuccess: () => void }) {
 }
 
 type StatusTab = "pending" | "approved" | "rejected" | "all";
-const STATUS_BORDER: Record<string, string> = {
-  pending: "border-l-amber-400",
-  approved: "border-l-green-500",
-  rejected: "border-l-red-400",
-};
+const STATUS_BORDER: Record<string, string> = { pending: "border-l-amber-400", approved: "border-l-green-500", rejected: "border-l-red-400" };
 const STATUS_LABEL: Record<string, string> = { pending: "待审核", approved: "已通过", rejected: "已拒绝" };
 const STATUS_CLS: Record<string, string> = {
   pending: "bg-amber-100 text-amber-700 border-amber-200",
@@ -168,11 +145,11 @@ const STATUS_CLS: Record<string, string> = {
 };
 
 export default function Submissions() {
+  const { isBroadcaster } = useAuth();
   const [tab, setTab] = useState<StatusTab>("pending");
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
   const [reviewFor, setReviewFor] = useState<{ sub: Submission; action: "approve" | "reject" } | null>(null);
   const [reviewNote, setReviewNote] = useState("");
-
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -185,13 +162,12 @@ export default function Submissions() {
 
   const handleReview = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reviewFor) return;
+    if (!reviewFor || !isBroadcaster) return;
     const newStatus = reviewFor.action === "approve" ? "approved" : "rejected";
     updateSubmission.mutate({ id: reviewFor.sub.id, data: { status: newStatus, reviewNote: reviewNote || undefined } }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListSubmissionsQueryKey() });
-        setReviewFor(null);
-        setReviewNote("");
+        setReviewFor(null); setReviewNote("");
         toast({ title: reviewFor.action === "approve" ? "已通过审核" : "已拒绝申请" });
       },
       onError: () => toast({ title: "操作失败", variant: "destructive" }),
@@ -199,11 +175,9 @@ export default function Submissions() {
   };
 
   const handleDelete = (id: number) => {
+    if (!isBroadcaster) return;
     deleteSubmission.mutate({ id }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListSubmissionsQueryKey() });
-        toast({ title: "已删除" });
-      },
+      onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListSubmissionsQueryKey() }); toast({ title: "已删除" }); },
     });
   };
 
@@ -215,18 +189,18 @@ export default function Submissions() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">点歌审核</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">审核同学提交的歌曲申请</p>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            {isBroadcaster ? "审核同学提交的歌曲申请" : "浏览点歌申请记录"}
+          </p>
         </div>
         <Dialog open={isSubmitOpen} onOpenChange={setIsSubmitOpen}>
           <DialogTrigger asChild>
-            <Button className="font-semibold gap-2">
-              <Send className="h-4 w-4" />我要点歌
-            </Button>
+            <Button className="font-semibold gap-2"><Send className="h-4 w-4" />我要点歌</Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>我要点歌</DialogTitle>
-              <DialogDescription>向校园广播站推荐你喜欢的歌曲（18:15 广播时段播出）</DialogDescription>
+              <DialogDescription>向校园广播站推荐你喜欢的歌曲（{" "}广播时段播出）</DialogDescription>
             </DialogHeader>
             <SubmitForm onSuccess={() => setIsSubmitOpen(false)} />
           </DialogContent>
@@ -241,6 +215,14 @@ export default function Submissions() {
           <TabsTrigger value="all">全部</TabsTrigger>
         </TabsList>
       </Tabs>
+
+      {/* Permission notice for non-broadcasters */}
+      {!isBroadcaster && (
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50/60 text-sm text-amber-800">
+          <Lock className="h-4 w-4 shrink-0" />
+          <span>点歌申请审核由广播站工作人员负责。同学们可点击「我要点歌」提交新申请。</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading ? (
@@ -310,20 +292,27 @@ export default function Submissions() {
                   )}
                 </CardContent>
 
+                {/* P1: Action buttons only for broadcasters */}
                 <CardFooter className="pt-2 border-t bg-muted/20 gap-2">
-                  {sub.status === "pending" ? (
-                    <>
-                      <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs gap-1" onClick={() => setReviewFor({ sub, action: "approve" })}>
-                        <Check className="w-3.5 h-3.5" />通过审核
+                  {isBroadcaster ? (
+                    sub.status === "pending" ? (
+                      <>
+                        <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs gap-1" onClick={() => setReviewFor({ sub, action: "approve" })}>
+                          <Check className="w-3.5 h-3.5" />通过审核
+                        </Button>
+                        <Button size="sm" variant="destructive" className="flex-1 text-xs gap-1" onClick={() => setReviewFor({ sub, action: "reject" })}>
+                          <X className="w-3.5 h-3.5" />拒绝申请
+                        </Button>
+                      </>
+                    ) : (
+                      <Button size="sm" variant="ghost" className="w-full text-xs text-destructive hover:text-destructive hover:bg-destructive/10 gap-1" onClick={() => handleDelete(sub.id)}>
+                        <Trash2 className="w-3.5 h-3.5" />删除记录
                       </Button>
-                      <Button size="sm" variant="destructive" className="flex-1 text-xs gap-1" onClick={() => setReviewFor({ sub, action: "reject" })}>
-                        <X className="w-3.5 h-3.5" />拒绝申请
-                      </Button>
-                    </>
+                    )
                   ) : (
-                    <Button size="sm" variant="ghost" className="w-full text-xs text-destructive hover:text-destructive hover:bg-destructive/10 gap-1" onClick={() => handleDelete(sub.id)}>
-                      <Trash2 className="w-3.5 h-3.5" />删除记录
-                    </Button>
+                    <p className="w-full text-center text-xs text-muted-foreground py-0.5 flex items-center justify-center gap-1">
+                      <Lock className="h-3 w-3" />仅广播站工作人员可操作
+                    </p>
                   )}
                 </CardFooter>
               </Card>
@@ -332,36 +321,31 @@ export default function Submissions() {
         )}
       </div>
 
-      {/* Review Dialog */}
-      <Dialog open={!!reviewFor} onOpenChange={open => { if (!open) { setReviewFor(null); setReviewNote(""); } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {reviewFor?.action === "approve" ? "通过审核" : "拒绝申请"} — 《{reviewFor?.sub.title}》
-            </DialogTitle>
-            <DialogDescription>
-              {reviewFor?.action === "approve" ? "确认通过此歌曲的点歌申请。" : "拒绝此申请，可填写拒绝理由。"}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleReview} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">审核意见（选填）</label>
-              <Textarea value={reviewNote} onChange={e => setReviewNote(e.target.value)} placeholder={reviewFor?.action === "approve" ? "例：好歌！已加入播放列表" : "例：歌词内容不适合校园广播"} />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => { setReviewFor(null); setReviewNote(""); }}>取消</Button>
-              <Button
-                type="submit"
-                disabled={updateSubmission.isPending}
-                className={reviewFor?.action === "approve" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
-                variant={reviewFor?.action === "approve" ? "default" : "destructive"}
-              >
-                {updateSubmission.isPending ? "处理中…" : reviewFor?.action === "approve" ? "确认通过" : "确认拒绝"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Review Dialog — only accessible by broadcasters */}
+      {isBroadcaster && (
+        <Dialog open={!!reviewFor} onOpenChange={open => { if (!open) { setReviewFor(null); setReviewNote(""); } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{reviewFor?.action === "approve" ? "通过审核" : "拒绝申请"} — 《{reviewFor?.sub.title}》</DialogTitle>
+              <DialogDescription>{reviewFor?.action === "approve" ? "确认通过此歌曲的点歌申请。通过后将自动添加至歌曲库。" : "拒绝此申请，可填写拒绝理由。"}</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleReview} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">审核意见（选填）</label>
+                <Textarea value={reviewNote} onChange={e => setReviewNote(e.target.value)} placeholder={reviewFor?.action === "approve" ? "例：好歌！已加入播放列表" : "例：歌词内容不适合校园广播"} />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => { setReviewFor(null); setReviewNote(""); }}>取消</Button>
+                <Button type="submit" disabled={updateSubmission.isPending}
+                  className={reviewFor?.action === "approve" ? "bg-green-600 hover:bg-green-700 text-white" : ""}
+                  variant={reviewFor?.action === "approve" ? "default" : "destructive"}>
+                  {updateSubmission.isPending ? "处理中…" : reviewFor?.action === "approve" ? "确认通过" : "确认拒绝"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

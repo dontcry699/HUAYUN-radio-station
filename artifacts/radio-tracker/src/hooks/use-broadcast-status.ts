@@ -1,4 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { bangkokParts, timeToSeconds, timeToMinutes, formatCountdown } from "@/lib/time";
+
+export interface ScheduleConfig {
+  schoolStart: string;      // "HH:mm"
+  broadcastStart: string;
+  broadcastEnd: string;
+  schoolEnd: string;
+}
+
+export const DEFAULT_SCHEDULE: ScheduleConfig = {
+  schoolStart: "17:30",
+  broadcastStart: "18:15",
+  broadcastEnd: "18:35",
+  schoolEnd: "20:10",
+};
 
 export type BroadcastStatus =
   | "school-not-started"
@@ -7,109 +22,151 @@ export type BroadcastStatus =
   | "study-session"
   | "ended";
 
-export interface BroadcastStatusInfo {
+export interface BroadcastInfo {
   status: BroadcastStatus;
   label: string;
   sublabel: string;
   isLive: boolean;
-  remainingMinutes: number | null;
+  /** Seconds until broadcast starts (if preparing/not-started) or null */
+  countdownSeconds: number | null;
+  /** Label for the countdown */
+  countdownLabel: string;
+  cfg: ScheduleConfig;
 }
 
-const DEFAULT_SCHEDULE = {
-  schoolStart: "17:30",
-  broadcastStart: "18:15",
-  broadcastEnd: "18:35",
-  schoolEnd: "20:10",
-};
+const BASE = () => (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
 
-export type ScheduleConfig = typeof DEFAULT_SCHEDULE;
+export function computeStatus(date: Date, cfg: ScheduleConfig): BroadcastInfo {
+  const { totalMinutes: t, totalSeconds: ts } = bangkokParts(date);
+  const SCHOOL_START = timeToMinutes(cfg.schoolStart);
+  const BROADCAST_START = timeToMinutes(cfg.broadcastStart);
+  const BROADCAST_END = timeToMinutes(cfg.broadcastEnd);
+  const SCHOOL_END = timeToMinutes(cfg.schoolEnd);
 
-export function loadScheduleConfig(): ScheduleConfig {
-  try {
-    const raw = localStorage.getItem("cr-schedule");
-    if (raw) return { ...DEFAULT_SCHEDULE, ...JSON.parse(raw) };
-  } catch { /* ignore */ }
-  return DEFAULT_SCHEDULE;
-}
-
-export function saveScheduleConfig(cfg: ScheduleConfig) {
-  localStorage.setItem("cr-schedule", JSON.stringify(cfg));
-}
-
-function parseTime(t: string): number {
-  const [h, m] = t.split(":").map(Number);
-  return (h || 0) * 60 + (m || 0);
-}
-
-export function toMinutes(date: Date) {
-  return date.getHours() * 60 + date.getMinutes();
-}
-
-function compute(now: Date, cfg: ScheduleConfig): BroadcastStatusInfo {
-  const t = toMinutes(now);
-  const SCHOOL_START = parseTime(cfg.schoolStart);
-  const BROADCAST_START = parseTime(cfg.broadcastStart);
-  const BROADCAST_END = parseTime(cfg.broadcastEnd);
-  const SCHOOL_END = parseTime(cfg.schoolEnd);
+  const BROADCAST_START_S = timeToSeconds(cfg.broadcastStart);
+  const BROADCAST_END_S = timeToSeconds(cfg.broadcastEnd);
 
   let status: BroadcastStatus;
   let label: string;
   let sublabel: string;
+  let countdownSeconds: number | null = null;
+  let countdownLabel = "";
 
   if (t < SCHOOL_START) {
     status = "school-not-started";
     label = "广播未开始";
-    sublabel = `下一次广播时间：${cfg.broadcastStart}`;
+    sublabel = `广播时间：${cfg.broadcastStart}–${cfg.broadcastEnd}`;
+    countdownSeconds = BROADCAST_START_S - ts;
+    countdownLabel = "距离广播开始";
   } else if (t < BROADCAST_START) {
     status = "preparing";
     label = "广播准备中";
-    sublabel = `下一次广播时间：${cfg.broadcastStart}`;
+    sublabel = `广播将于 ${cfg.broadcastStart} 开始`;
+    countdownSeconds = BROADCAST_START_S - ts;
+    countdownLabel = "距离广播开始";
   } else if (t < BROADCAST_END) {
     status = "live";
     label = "音乐广播进行中";
-    sublabel = "正在播放歌曲";
+    sublabel = "校园之声正在播出";
+    countdownSeconds = BROADCAST_END_S - ts;
+    countdownLabel = "距离广播结束";
   } else if (t < SCHOOL_END) {
     status = "study-session";
     label = "课程进行中";
     sublabel = "音乐广播已结束";
+    countdownSeconds = null;
+    countdownLabel = "感谢收听校园广播";
   } else {
     status = "ended";
     label = "今日广播已结束";
     sublabel = "感谢收听校园广播";
+    countdownSeconds = null;
+    countdownLabel = "感谢收听校园广播";
   }
 
-  const remainingMinutes = status === "live" ? BROADCAST_END - t : null;
-  return { status, label, sublabel, isLive: status === "live", remainingMinutes };
+  return {
+    status, label, sublabel,
+    isLive: status === "live",
+    countdownSeconds,
+    countdownLabel,
+    cfg,
+  };
 }
 
-export function useBroadcastStatus() {
-  const [cfg, setCfg] = useState<ScheduleConfig>(loadScheduleConfig);
-  const [info, setInfo] = useState(() => compute(new Date(), loadScheduleConfig()));
+/** Fetch and cache schedule config from API */
+let _cachedConfig: ScheduleConfig | null = null;
+let _fetchPromise: Promise<ScheduleConfig> | null = null;
+
+async function fetchScheduleConfig(): Promise<ScheduleConfig> {
+  if (_cachedConfig) return _cachedConfig;
+  if (_fetchPromise) return _fetchPromise;
+  _fetchPromise = fetch(`${BASE()}/api/config/schedule`)
+    .then(r => r.ok ? r.json() : DEFAULT_SCHEDULE)
+    .catch(() => DEFAULT_SCHEDULE)
+    .then(data => {
+      _cachedConfig = { ...DEFAULT_SCHEDULE, ...data };
+      return _cachedConfig!;
+    });
+  return _fetchPromise;
+}
+
+export function invalidateScheduleCache() {
+  _cachedConfig = null;
+  _fetchPromise = null;
+}
+
+/** Main hook — updates every second, uses Bangkok time */
+export function useBroadcastStatus(): BroadcastInfo {
+  const [cfg, setCfg] = useState<ScheduleConfig>(DEFAULT_SCHEDULE);
+  const [info, setInfo] = useState<BroadcastInfo>(() => computeStatus(new Date(), DEFAULT_SCHEDULE));
+
+  const cfgRef = useRef(cfg);
+  cfgRef.current = cfg;
 
   useEffect(() => {
-    const update = () => {
-      const c = loadScheduleConfig();
+    fetchScheduleConfig().then(c => {
       setCfg(c);
-      setInfo(compute(new Date(), c));
-    };
-    update();
-    const iv = setInterval(update, 30000);
-    const onStorage = (e: StorageEvent) => { if (e.key === "cr-schedule") update(); };
-    window.addEventListener("storage", onStorage);
-    return () => { clearInterval(iv); window.removeEventListener("storage", onStorage); };
+      setInfo(computeStatus(new Date(), c));
+    });
   }, []);
 
-  return { ...info, cfg };
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setInfo(computeStatus(new Date(), cfgRef.current));
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  return info;
 }
 
+/** Hook to get/reload the schedule config */
+export function useScheduleConfig() {
+  const [cfg, setCfg] = useState<ScheduleConfig>(DEFAULT_SCHEDULE);
+  const [loading, setLoading] = useState(true);
+
+  const reload = () => {
+    invalidateScheduleCache();
+    setLoading(true);
+    fetchScheduleConfig().then(c => { setCfg(c); setLoading(false); });
+  };
+
+  useEffect(() => {
+    fetchScheduleConfig().then(c => { setCfg(c); setLoading(false); });
+  }, []);
+
+  return { cfg, loading, reload };
+}
+
+/** Build schedule items from config */
 export function getScheduleItems(cfg: ScheduleConfig) {
   return [
-    { time: cfg.schoolStart, label: "上课时间开始", description: "同学们进入教室，课程正式开始" },
-    { time: "18:00", label: "广播前准备", description: "广播站成员整理点歌单，调试设备" },
-    { time: cfg.broadcastStart, label: "音乐广播开始", description: "校园之声正式开播，播放点歌与寄语" },
-    { time: cfg.broadcastEnd, label: "音乐广播结束", description: "继续安静学习时段" },
-    { time: cfg.schoolEnd, label: "放学", description: "课程结束，同学们有序离校" },
-  ] as const;
+    { time: cfg.schoolStart, label: "上课时间开始", minutes: timeToMinutes(cfg.schoolStart) },
+    { time: "18:00", label: "广播前准备", minutes: timeToMinutes("18:00") },
+    { time: cfg.broadcastStart, label: "音乐广播开始", minutes: timeToMinutes(cfg.broadcastStart) },
+    { time: cfg.broadcastEnd, label: "音乐广播结束", minutes: timeToMinutes(cfg.broadcastEnd) },
+    { time: cfg.schoolEnd, label: "放学", minutes: timeToMinutes(cfg.schoolEnd) },
+  ];
 }
 
-export const SCHEDULE_ITEMS = getScheduleItems(DEFAULT_SCHEDULE);
+export { formatCountdown };

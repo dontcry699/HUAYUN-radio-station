@@ -1,53 +1,35 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useBroadcastStatus, SCHEDULE_ITEMS, toMinutes } from "@/hooks/use-broadcast-status";
+import { useBroadcastStatus, getScheduleItems, formatCountdown } from "@/hooks/use-broadcast-status";
+import { ClockWidget } from "@/components/clock-widget";
+import { bangkokParts } from "@/lib/time";
 import { Calendar, BookOpen, Music, Mic2, Users, RadioTower } from "lucide-react";
 
-const PERIOD_INFO = [
-  {
-    time: "17:30",
-    title: "晚自习开始",
-    desc: "同学们进入教室，安静学习，准备迎接夜间的广播时段。",
-    icon: BookOpen,
-    color: "text-amber-500",
-    bg: "bg-amber-50",
-  },
-  {
-    time: "18:00",
-    title: "广播前准备",
-    desc: "广播站成员开始整理当日点歌单，调试设备，准备音乐广播。",
-    icon: Mic2,
-    color: "text-blue-500",
-    bg: "bg-blue-50",
-  },
-  {
-    time: "18:15",
-    title: "音乐广播开始",
-    desc: "校园之声正式开播！播放同学点歌、校园公告与美好祝福寄语。",
-    icon: Music,
-    color: "text-green-500",
-    bg: "bg-green-50",
-  },
-  {
-    time: "18:35",
-    title: "音乐广播结束",
-    desc: "广播结束，同学们回到安静的晚自习状态，继续努力学习。",
-    icon: RadioTower,
-    color: "text-purple-500",
-    bg: "bg-purple-50",
-  },
-  {
-    time: "20:10",
-    title: "放学",
-    desc: "今日晚自习结束，同学们有序离校，期待明天的校园广播！",
-    icon: Users,
-    color: "text-rose-500",
-    bg: "bg-rose-50",
-  },
+const PERIOD_META = [
+  { icon: BookOpen, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-950/20", desc: "同学们进入教室，课程正式开始，安静学习，广播站成员开始准备。" },
+  { icon: Mic2,     color: "text-blue-500",  bg: "bg-blue-50 dark:bg-blue-950/20",   desc: "广播站成员整理当日点歌单，调试麦克风与音响设备，做好开播准备。" },
+  { icon: Music,    color: "text-green-500", bg: "bg-green-50 dark:bg-green-950/20", desc: "校园之声正式开播！播放同学点歌、校园公告与美好祝福寄语。" },
+  { icon: RadioTower, color: "text-purple-500", bg: "bg-purple-50 dark:bg-purple-950/20", desc: "今日广播结束，同学们回到安静的学习状态，继续努力加油。" },
+  { icon: Users,    color: "text-rose-500",  bg: "bg-rose-50 dark:bg-rose-950/20",   desc: "今日课程结束，同学们有序离校，期待明天的校园广播！" },
 ];
 
 export default function Schedule() {
-  const { status, label } = useBroadcastStatus();
-  const nowMinutes = toMinutes(new Date());
+  const { status, label, isLive, countdownSeconds, countdownLabel, cfg } = useBroadcastStatus();
+  const [nowMin, setNowMin] = useState(() => bangkokParts().totalMinutes);
+  const scheduleItems = getScheduleItems(cfg);
+
+  useEffect(() => {
+    const iv = setInterval(() => setNowMin(bangkokParts().totalMinutes), 5000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const STATUS_BADGE: Record<string, string> = {
+    "school-not-started": "bg-gray-100 text-gray-600",
+    "preparing": "bg-amber-100 text-amber-700",
+    "live": "bg-green-100 text-green-700 font-bold",
+    "study-session": "bg-blue-100 text-blue-700",
+    "ended": "bg-gray-100 text-gray-500",
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -58,50 +40,73 @@ export default function Schedule() {
         <p className="text-muted-foreground text-sm mt-0.5">每日广播时间表与广播站工作安排</p>
       </div>
 
-      {/* Current status banner */}
-      <Card className="border-2 border-primary/30 bg-primary/5">
-        <CardContent className="flex items-center gap-3 py-4">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0">
-            <RadioTower className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-primary/70 uppercase tracking-widest">当前状态</p>
-            <p className="font-bold text-lg leading-tight">{label}</p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Status + Clock row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Current status */}
+        <Card className="border-2 border-primary/30 bg-primary/5">
+          <CardContent className="flex items-center gap-4 py-5">
+            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shrink-0">
+              <RadioTower className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-primary/70 uppercase tracking-widest mb-0.5">当前状态</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm ${STATUS_BADGE[status]}`}>
+                  {isLive && <span className="w-2 h-2 rounded-full bg-green-500 live-dot" />}
+                  {label}
+                </span>
+              </div>
+              {countdownSeconds !== null && countdownSeconds > 0 && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">{countdownLabel}：</span>
+                  <span className="font-mono font-bold text-primary tabular-nums">{formatCountdown(countdownSeconds)}</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <ClockWidget />
+      </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Timeline */}
+        {/* Timeline with ✓ ● ○ markers */}
         <Card className="shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">今日广播安排</CardTitle>
+            <CardTitle className="text-base">今日广播时间表</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="relative">
-              <div className="absolute left-[21px] top-4 bottom-4 w-0.5 bg-border" />
-              <ol className="space-y-6">
-                {SCHEDULE_ITEMS.map((item, idx) => {
-                  const isPast = nowMinutes > item.minutes;
-                  const isNext = !isPast && (idx === 0 || nowMinutes > SCHEDULE_ITEMS[idx - 1].minutes);
-                  const pi = PERIOD_INFO[idx];
-                  const Icon = pi.icon;
+              <div className="absolute left-[28px] top-5 bottom-5 w-0.5 bg-border" />
+              <ol className="space-y-5">
+                {scheduleItems.map((item, idx) => {
+                  const isPast = nowMin > item.minutes;
+                  const isCurrent = !isPast && (idx === 0 || nowMin >= scheduleItems[idx - 1].minutes);
+                  const meta = PERIOD_META[idx];
+                  const Icon = meta.icon;
+                  const marker = isPast ? "✓" : isCurrent ? "●" : "○";
 
                   return (
-                    <li key={item.time} className="flex gap-4 relative">
-                      <div className={`w-10 h-10 rounded-full shrink-0 flex items-center justify-center z-10 transition-all ${
-                        isNext ? "ring-4 ring-primary/20 " + pi.bg : isPast ? "bg-muted" : "bg-card border-2 border-border"
+                    <li key={item.time} className="flex gap-4 relative items-start">
+                      {/* Circle icon */}
+                      <div className={`w-14 h-14 rounded-full shrink-0 flex flex-col items-center justify-center z-10 border-2 transition-all ${
+                        isCurrent ? `ring-4 ring-primary/20 border-primary ${meta.bg}` :
+                        isPast ? "bg-muted border-border" : "bg-card border-border/60"
                       }`}>
-                        <Icon className={`h-4 w-4 ${isNext ? pi.color : isPast ? "text-muted-foreground/40" : "text-muted-foreground/60"}`} />
+                        <span className={`text-sm font-black ${isCurrent ? "text-primary" : isPast ? "text-muted-foreground/40" : "text-muted-foreground/50"}`}>
+                          {marker}
+                        </span>
+                        <Icon className={`h-3.5 w-3.5 mt-0.5 ${isCurrent ? meta.color : isPast ? "text-muted-foreground/30" : "text-muted-foreground/40"}`} />
                       </div>
-                      <div className={`flex-1 pb-1 ${isPast && !isNext ? "opacity-50" : ""}`}>
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className={`font-mono text-sm font-bold ${isNext ? "text-primary" : "text-muted-foreground"}`}>{item.time}</span>
-                          {isNext && <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">即将</span>}
-                          {isPast && <span className="bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5 rounded-full">已过</span>}
+
+                      <div className={`flex-1 pb-1 ${isPast && !isCurrent ? "opacity-50" : ""}`}>
+                        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                          <span className={`font-mono text-sm font-bold ${isCurrent ? "text-primary" : "text-muted-foreground"}`}>{item.time}</span>
+                          {isCurrent && <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">当前</span>}
+                          {isPast && !isCurrent && <span className="bg-muted text-muted-foreground text-[10px] px-1.5 py-0.5 rounded-full">已过</span>}
                         </div>
-                        <p className={`font-semibold text-sm ${isNext ? "text-primary" : ""}`}>{item.label}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{pi.desc}</p>
+                        <p className={`font-semibold text-sm ${isCurrent ? "text-primary" : ""}`}>{item.label}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{meta.desc}</p>
                       </div>
                     </li>
                   );
@@ -116,7 +121,7 @@ export default function Schedule() {
           <Card className="shadow-sm border-l-4 border-l-primary">
             <CardContent className="py-4">
               <h3 className="font-bold mb-2 flex items-center gap-2"><Music className="h-4 w-4 text-primary" />关于音乐广播</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">每天 18:15—18:35，校园之声广播站准时播出20分钟精彩节目，内容包括同学点歌、校园公告、祝福寄语等。</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">每天 {cfg.broadcastStart}—{cfg.broadcastEnd}，校园之声广播站准时播出精彩节目，内容包括同学点歌、校园公告、祝福寄语等。</p>
             </CardContent>
           </Card>
           <Card className="shadow-sm border-l-4 border-l-blue-400">
@@ -129,6 +134,13 @@ export default function Schedule() {
             <CardContent className="py-4">
               <h3 className="font-bold mb-2 flex items-center gap-2"><Users className="h-4 w-4 text-amber-500" />加入广播站</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">校园之声广播站长期招募热爱音乐与播音的同学，欢迎有兴趣的同学联系班主任或到广播站办公室了解详情。</p>
+            </CardContent>
+          </Card>
+          {/* Timezone note */}
+          <Card className="shadow-sm border-l-4 border-l-green-400 bg-green-50/30">
+            <CardContent className="py-4">
+              <h3 className="font-bold mb-2 flex items-center gap-2 text-green-700">🕐 时区说明</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">所有时间均使用<strong>泰国时间（UTC+7，Asia/Bangkok）</strong>。广播状态与倒计时均实时更新。</p>
             </CardContent>
           </Card>
         </div>

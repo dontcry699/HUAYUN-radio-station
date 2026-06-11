@@ -6,12 +6,14 @@ import announcementsRouter from "./announcements";
 import statsRouter from "./stats";
 import authRouter from "./auth";
 import usersRouter from "./users";
+import configRouter from "./config";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
 router.use(usersRouter);
+router.use(configRouter);
 router.use(songsRouter);
 router.use(submissionsRouter);
 router.use(announcementsRouter);
