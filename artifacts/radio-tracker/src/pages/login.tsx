@@ -95,28 +95,6 @@ export default function LoginPage() {
                 {loading ? "登录中…" : "登录"}
               </Button>
             </form>
-
-            <div className="mt-4 pt-4 border-t">
-              <p className="text-xs text-muted-foreground text-center mb-2">演示账号</p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <button
-                  type="button"
-                  className="text-left bg-muted/60 rounded-lg p-2 hover:bg-muted transition-colors"
-                  onClick={() => { setUsername("admin"); setPassword("admin2024"); }}
-                >
-                  <div className="font-semibold text-primary">管理员</div>
-                  <div className="text-muted-foreground">admin / admin2024</div>
-                </button>
-                <button
-                  type="button"
-                  className="text-left bg-muted/60 rounded-lg p-2 hover:bg-muted transition-colors"
-                  onClick={() => { setUsername("broadcaster"); setPassword("bc2024"); }}
-                >
-                  <div className="font-semibold text-blue-600">播音员</div>
-                  <div className="text-muted-foreground">broadcaster / bc2024</div>
-                </button>
-              </div>
-            </div>
           </CardContent>
         </Card>
 

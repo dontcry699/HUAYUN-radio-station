@@ -177,7 +177,7 @@ function StudentDashboard() {
         {/* Charts preview */}
         <Card className="shadow-sm">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2"><Trophy className="h-4 w-4 text-amber-500" />热门榜单</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2"><Trophy className="h-4 w-4 text-amber-500" />最近播放</CardTitle>
             <Link href="/charts"><span className="text-xs text-primary hover:underline cursor-pointer">全部</span></Link>
           </CardHeader>
           <CardContent>
